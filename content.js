@@ -1,5 +1,6 @@
 
 /* global $ */
+/* global Chart */
 
 //#region GLOBAL DEFINITIONS
 
@@ -161,7 +162,7 @@ function addConstraintsObserver(cEl, bEl) {
         console.error("Board canvas element undefined:");
         return;
     }
-    constraintsObserver = new MutationObserver(function(mutations) {
+    constraintsObserver = new MutationObserver(function() {
         console.log("Constraints changed");
         parseConstraints(cEl);
         beautifyConstraintsList(cEl);
@@ -176,7 +177,7 @@ function addTeamObservers(el, oList) {
         console.error("Board canvas undefined");
         return;
     }
-    $(el).find("div.js-list-content").each(function(index) {
+    $(el).find("div.js-list-content").each(function() {
        addTeamObserver(this, oList);
     });
 }
@@ -604,7 +605,7 @@ function isConstraintsMet(el, teamRoles) {
  */
 function getCardLabels(el) {
     var cardLabels = [];
-    $(el).find("span.card-label").each(function( index ) {
+    $(el).find("span.card-label").each(function() {
         var title = $(this).attr("title");
          if (cardLabels[title] === undefined) {
             cardLabels[title] = 0;
