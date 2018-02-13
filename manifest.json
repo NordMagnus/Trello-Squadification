@@ -8,6 +8,13 @@
         "64": "icons/icon64.png",
         "128": "icons/icon128-96.png"
     },
+    "permissions": [
+        "storage"
+    ],
+    "browser_action": {
+        "default_icon": "icons/icon48.png",
+        "default_popup": "popup.html"
+    },
     "description": "Distributed squadification for Trello",
     "content_scripts": [{
         "css": ["styles.css"],

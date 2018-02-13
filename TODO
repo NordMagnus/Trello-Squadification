@@ -2,9 +2,12 @@
 Features:
     ☐ Default icon for missing people
     ✔ Show bars in same order in all lists @done(18-02-13 15:54)
+    ☐ Create extension page with settings @started(18-02-13 19:56)
     Constraints:
         ✔ Remove default size @done(18-02-13 14:35)
 Quality:
     ☐ Clean up (destroy) observers?
-
+    Unit Testing:
+        ✔ Decide on a unit test framework (that works with jQuery) @done(18-02-13 19:56)
+        ☐ Create tests
 Archive:
