@@ -1,0 +1,4 @@
+**/*.zip
+.history
+.vscode
+.eslintrc.json
