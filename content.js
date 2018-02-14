@@ -15,7 +15,7 @@ var teamObservers = [];
 var labelColors = [];
 var teamMinSize;
 var teamMaxSize;
-var picSize = 1;                // Cover image size: 0=hide, 1=small (using imageHeight), 2=original
+var picSize = 2;                // Cover image size: 0=hide, 1=small (using imageHeight), 2=original
 
 var config = {
 
@@ -79,22 +79,15 @@ function setupBoard() {
         labelColors[title] = bgCol;
     });
 
-    adjustCoverImages();
+    //adjustCoverImages();
 }
 
 function adjustCoverImages() {
-    /*
-     * Find all cover images and change the height
-     */
-    // $("div.list-card-cover").filter(function() {
-    //     return $(this).css("background-image") !== "none";
-    // }).css("height", config.imageHeight).css("background-size", "contain").css("background-color", "White");
-
     $("div.list-card-cover").filter(function() {
         return $(this).css("background-image") !== "none";
     }).each(function() {
         $(this).data("original-height", $(this).css("height"));
-        console.log($(this).data("original-height"));
+        // console.log($(this).data("original-height"));
         $(this).css("height", config.imageHeight).css("background-size", "contain").css("background-color", config.coverBgColor);
     })
 }
@@ -102,22 +95,24 @@ function adjustCoverImages() {
 function addHeaderIcons() {
     // TODO Add some fancy pancy icons (how to use the ::before pseudoclass here?!?)
     $("div.header-user").prepend("<a id='toggle-stats' class='header-btn squad-enabled'><span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span><span class='header-btn-text'>Stats</span></a>");
-    $("div.header-user").prepend("<a id='toggle-pics' class='header-btn squad-tristate'><span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span><span class='header-btn-text'>Pics</span></a>");
+    $("div.header-user").prepend("<a id='toggle-pics' class='header-btn squad-enabled'><span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span><span class='header-btn-text'>Pics</span></a>");
     $("div.header-user").prepend("<a id='toggle-fields' class='header-btn squad-enabled'><span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span><span class='header-btn-text'>Fields</span></a>");
 
     $("a#toggle-stats").click(function() {
         $("div.graph-area").slideToggle("fast");
         $(this).toggleClass("squad-enabled squad-disabled");
     });
+
     $("a#toggle-pics").click(function() {
+        if ($(this).hasClass("button-disabled")) {
+            return;
+        }
+        $(this).addClass("button-disabled");
         if (picSize === 1) {
-            //$("div.list-card-cover").slideToggle("fast");
             $("div.list-card-cover").css("height", 0);
             $(this).toggleClass("squad-tristate squad-disabled");
             picSize = 0;
         } else if (picSize === 0) {
-            //$("div.list-card-cover").slideToggle("fast");
-
             $("div.list-card-cover").filter(function() {
                 return $(this).css("background-image") !== "none";
             }).each(function() {
@@ -133,7 +128,9 @@ function addHeaderIcons() {
             $(this).toggleClass("squad-enabled squad-tristate");
             picSize = 1;
         }
+        $(this).removeClass("button-disabled");
     });
+
     $("a#toggle-fields").click(function() {
         $("div.badges").slideToggle("fast");
         $(this).toggleClass("squad-enabled squad-disabled");
@@ -206,12 +203,10 @@ function addTeamObserver(el, oList) {
          * on actual changes to teams.
          */
         // TODO Optimize? Improve accuracy?
-        if (mutations[0].addedNodes.length === 1
-                    && $(mutations[0].target).hasClass("js-badges")
-                    && $(mutations[0].addedNodes[0]).has("icon-attachment")) {
+        if (mutations[0].target.className === "js-badges") {
+            // console.log("Skipping " + mutations[0].target.className);
             return;
         }
-        console.info("CHANGE! " + listName);
         checkTeam(el);
     });
     var conf = {attributes: false, childList: true, characterData: true, subtree: true};

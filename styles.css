@@ -38,6 +38,11 @@ body {
 .header-btn.squad-tristate {
     background-color: #0079bf;
 }
+
+.header-btn.button-disabled {
+    background-color: #808080;
+}
+
 .team-count {
     font-size: 24pt;
     float: right;
