@@ -3,6 +3,7 @@ Features:
     ☐ Default icon for missing people
     ✔ Show bars in same order in all lists @done(18-02-13 15:54)
     ☐ Create extension page with settings @started(18-02-13 19:56)
+    ✔ Use original cover image sizes as default (only set background) @done(18-02-14 11:44)
     Constraints:
         ✔ Remove default size @done(18-02-13 14:35)
 Quality:
