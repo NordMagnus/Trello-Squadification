@@ -418,9 +418,6 @@ function drawConfidence(area, name, d) {
     var labels = extractLabels(d);
     var chart;
 
-    // Sort the labels. Sort of.
-    var graphLabels = sortKeys(d);
-
     for (var i = 0; i < labels.length; ++i) {
         var labelData = [];
         for (var j = 1; j <= 5; ++j) {
