@@ -15,12 +15,13 @@ var teamObservers = [];
 var labelColors = [];
 var teamMinSize;
 var teamMaxSize;
+var minConfidence;
 var picSize = 2;                // Cover image size: 0=hide, 1=small (using imageHeight), 2=original
 
 var config = {
 
     validTeamColor: "#96c623",
-    unconfidentTeamColor: "#ccaa22",
+    unconfidentTeamColor: "#bb9922",
     invalidTeamColor: "#cc4400",
 
     imageHeight: 64,
@@ -410,9 +411,6 @@ function drawGraph(area, name, d) {
 }
 
 function drawConfidence(area, name, d) {
-
-    // console.info(d);
-    // var graphLabels = [];
     var graphData = [];
 
     var labels = extractLabels(d);
@@ -420,9 +418,6 @@ function drawConfidence(area, name, d) {
 
     // Sort the labels. Sort of.
     var graphLabels = sortKeys(d);
-
-    console.log(d);
-    console.log(graphLabels);
 
     for (var i = 0; i < labels.length; ++i) {
         var labelData = [];
@@ -438,7 +433,6 @@ function drawConfidence(area, name, d) {
             }
             labelData.push(data);
         }
-        console.log(labelData); 
         var lblCol = labelColors[labels[i]];
         graphData.push({label: labels[i],
             fill: false,
@@ -448,8 +442,6 @@ function drawConfidence(area, name, d) {
             borderColor: lblCol
         });
     }
-
-    console.log(graphData);
 
     var graphId = "#graph" + name;
     if (area.find(graphId).length === 0) {
@@ -488,7 +480,6 @@ function drawConfidence(area, name, d) {
             console.error(e);
         }
     } else {
-        console.log("UPDATING CHART");
         chart = area.data("graph" + name);
         chart.data = {
             labels: ["1","2","3","4","5"],
@@ -496,22 +487,6 @@ function drawConfidence(area, name, d) {
         };
         chart.update();
     }
-}
-
-/*
- * From StackOverflow: https://stackoverflow.com/questions/21646738/convert-hex-to-rgba
- */
-function hexToRgbA(hex, transparency){
-    var c;
-    if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-        c= hex.substring(1).split('');
-        if(c.length== 3){
-            c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-        }
-        c= '0x'+c.join('');
-        return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+',' + transparency + ')';
-    }
-    throw new Error('Bad Hex');
 }
 
 /**
@@ -553,15 +528,19 @@ function sortKeys(obj) {
 function parseConstraints(el) {
     roleConstraints = getCardLabels(el);
     var minSizeCard = el.find("span.list-card-title:contains('size >')");
-
     if (minSizeCard.length !== 0) {
         var text = minSizeCard
-        .clone()    //clone the element
-        .children() //select all the children
-        .remove()   //remove all the children
-        .end()  //again go back to selected element
-        .text();
-        teamMinSize = parseInt(text.substring(text.indexOf(">")+1));
+                            .clone()    //clone the element
+                            .children() //select all the children
+                            .remove()   //remove all the children
+                            .end()  //again go back to selected element
+                            .text();
+        if (text.indexOf(">=") !== -1) {
+            teamMinSize = parseInt(text.substring(text.indexOf(">=")+2));
+            teamMinSize -= 1;
+        } else {
+            teamMinSize = parseInt(text.substring(text.indexOf(">")+1));
+        }
         console.log("Minimum team size: " + teamMinSize);
     } else {
         teamMinSize = undefined;
@@ -570,15 +549,39 @@ function parseConstraints(el) {
     var maxSizeCard = el.find("span.list-card-title:contains('size <')");
     if (maxSizeCard.length !== 0) {
         var text = maxSizeCard
-        .clone()    //clone the element
-        .children() //select all the children
-        .remove()   //remove all the children
-        .end()  //again go back to selected element
-        .text();
-        teamMaxSize = parseInt(text.substring(text.indexOf("<")+1));
+                            .clone()    //clone the element
+                            .children() //select all the children
+                            .remove()   //remove all the children
+                            .end()  //again go back to selected element
+                            .text();
+        if (text.indexOf(">=") !== -1) {
+            teamMaxSize = parseInt(text.substring(text.indexOf("<=")+2));
+            teamMaxSize += 1;
+        } else {
+            teamMaxSize = parseInt(text.substring(text.indexOf("<")+1));
+        }
         console.log("Maximum team size: " + teamMaxSize);
     } else {
         teamMaxSize = undefined;
+    }
+
+    var minConfidenceCard = el.find("span.list-card-title:contains('confidence >')");
+    if (minConfidenceCard.length !== 0) {
+        var text = minConfidenceCard
+                            .clone()    //clone the element
+                            .children() //select all the children
+                            .remove()   //remove all the children
+                            .end()  //again go back to selected element
+                            .text();
+        if (text.indexOf(">=") !== -1) {
+            minConfidence = parseInt(text.substring(text.indexOf(">=")+2));
+            minConfidence -= 1;
+        } else {
+            minConfidence = parseInt(text.substring(text.indexOf(">")+1));
+        }
+        console.log("Minimum confidence: " + minConfidence);
+    } else {
+        minConfidence = undefined;
     }
 }
 
@@ -632,30 +635,51 @@ function checkTeam(el) {
     if ($(el).find("div.list-status").length === 0) {
         $(el).prepend("<div class='list-status' style='background-color: #444444;'><div class='team-count'>7</div><div class='violations'></div></div>"); 
     }
+
     var statusEl = $(el).find("div.list-status");
     var violationsEl = $(el).find("div.violations");
     violationsEl.empty();
     var teamRoles = getCardLabels(el);
     var violations = isConstraintsMet(el, teamRoles);
+    var fields = getFields(el);
+    var teamConfidence = getTeamConfidence(fields["Confidence"]);
+
+    statusEl.css("background-color", config.validTeamColor);
+
     if (violations.length > 0) {
         statusEl.css("background-color", config.invalidTeamColor);
-        violationsEl.html(violations.join("<br>"));
-    } else if (teamRoles["concern"] !== undefined) {
-        statusEl.css("background-color", config.unconfidentTeamColor);
+        violationsEl.html(violations.join("<br/>"));
     } else {
-        statusEl.css("background-color", config.validTeamColor);
+        if (teamRoles["concern"] !== undefined) {
+            var concernCards = $(el).find("div.list-card-details:has(span.card-label):contains('concern')");
+            concernCards.css("background-color", "rgba(255,128,96,0.4)");
+            var cardTitles = concernCards.find("span.list-card-title");
+            cardTitles.each(function() {
+                var text = $(this)
+                        .clone()    //clone the element
+                        .children() //select all the children
+                        .remove()   //remove all the children
+                        .end()  //again go back to selected element
+                        .text();            
+                violationsEl.append(text + "<br/>");
+            });
+            statusEl.css("background-color", config.unconfidentTeamColor);
+        }
+        console.log("Minimum confidence=" + minConfidence + ",teamConfidence=" + teamConfidence);
+        if (minConfidence !== undefined && teamConfidence !== undefined && teamConfidence <= minConfidence + 1) {
+            violationsEl.append("Low confidence score (" + teamConfidence.toFixed(1) + ")<br/>");
+            statusEl.css("background-color", config.unconfidentTeamColor);
+        }
     }
 
     var teamMembers = $(el).find("div.list-card-details:has(span.card-label)").not(":contains('concern')").length;
     $(el).find("div.team-count").text(teamMembers);
 
-    $(el).find("div.list-card-details:has(span.card-label):contains('concern')").css("background-color", "rgba(255,128,96,0.4)");
-
     /*
      * Change color of cards without labels
      */
     $(el).find("div.list-card-details:not(:has(span.card-label))").css("background-color", "rgba(180,180,180,0.2)");
-    var fields = getFields(el);
+
     drawTeamGraphs(el, fields);
 }
 
@@ -687,6 +711,33 @@ function getFields(el) {
         }
     });
     return fields;
+}
+
+function getTeamConfidence(field) {
+    /*
+    (6) [empty × 3, Array(0), Array(0), Array(0)]
+        3:[PO: 1, Dev: 1]
+        4:[Tester: 2, Dev: 2]
+        5:[Team Lead: 1]
+    */
+   if (field === undefined) {
+       return undefined;
+   }
+   var ctot = 0;
+   var mbrcnt = 0;
+    for (var i = 1; i <= 5; ++i) {
+        var f = field[i.toString()];
+        if (f !== undefined) {
+            for (var r in f) {
+                if (f.hasOwnProperty(r)) {
+                    ctot += i * f[r];
+                    mbrcnt += f[r];
+                }
+            }
+        }
+    }
+    // console.log("Total confidence: " + ctot + ", Members: " + mbrcnt);
+    return ctot/mbrcnt;
 }
 
 /**
