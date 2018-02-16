@@ -20,7 +20,7 @@ var picSize = 2;                // Cover image size: 0=hide, 1=small (using imag
 
 var config = {
 
-    validTeamColor: "#96c623",
+    validTeamColor: "#86b623",
     unconfidentTeamColor: "#bb9922",
     invalidTeamColor: "#cc4400",
 
@@ -60,12 +60,14 @@ function setupBoard() {
     }
 
     constraintsListEl = $("div.js-list-content").has("h2:contains('Squadification Constraints')");
-    beautifyConstraintsList(constraintsListEl);
-    parseConstraints(constraintsListEl);
-    // checkAllTeams(boardCanvasEl);
 
     addConstraintsObserver(constraintsListEl, boardCanvasEl);
-    addTeamObservers(boardCanvasEl, teamObservers);
+    /*
+     * Postpone loading team observers to avoid double calls when first loading.
+     */
+    setTimeout(function() {
+        addTeamObservers(boardCanvasEl, teamObservers);
+    }, 1000);
 
     addHeaderIcons();
     addListFolding();
