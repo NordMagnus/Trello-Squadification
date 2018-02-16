@@ -8,7 +8,10 @@ Features:
         ✔ Remove default size @done(18-02-13 14:35)
 Quality:
     ☐ Clean up (destroy) observers?
+    ☐ Refactor DOM functions to a library (tdom)
+
     Unit Testing:
         ✔ Decide on a unit test framework (that works with jQuery) @done(18-02-13 19:56)
+        ✔ Setup test framework @done(18-02-15 16:01)
         ☐ Create tests
 Archive:
