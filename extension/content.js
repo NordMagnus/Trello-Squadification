@@ -61,7 +61,7 @@ function setupBoard() {
     constraintsListEl = $("div.js-list-content").has("h2:contains('Squadification Constraints')");
     beautifyConstraintsList(constraintsListEl);
     parseConstraints(constraintsListEl);
-    checkAllTeams(boardCanvasEl);
+    // checkAllTeams(boardCanvasEl);
 
     addConstraintsObserver(constraintsListEl, boardCanvasEl);
     addTeamObservers(boardCanvasEl, teamObservers);
@@ -252,16 +252,80 @@ function drawTeamGraphs(el, fields) {
         }
         listHeader.append("<div class='graph-area' style='background-color: rgba(0,0,0,0);'></div>"); 
         area = $(listHeader).find("div.graph-area"); 
-        // TODO Add graph toggling
-        // area.click(function(){
-        //     if ( $('div.graph-area').css('visibility') == 'hidden' )
-        //       $('div.graph-area').css('visibility','visible');
-        //     else
-        //       $('div.graph-area').css('visibility','hidden');
-        //   });
     }
+
+    drawRoleDistribution(area, el);
+
     for(var f in fields) {
-        drawGraph(area, f, fields[f]);
+        console.log(f);
+        if (f === "Confidence") {
+            drawConfidence(area, f, fields[f]);
+        } else {
+            drawGraph(area, f, fields[f]);
+        }
+    }
+}
+
+function drawRoleDistribution(area, el) {
+    var labels = getCardLabels(el, true);
+    var graphLabels = sortKeys(labels);
+    var chartLabels = [];
+    var chart;
+    var graphData = {};
+
+    var graphData = {
+        backgroundColor: [],
+        data: []
+    };
+
+    for (var i = 0; i < graphLabels.length; ++i) {
+        graphData.data.push(labels[graphLabels[i]]);
+        chartLabels.push(labels[graphLabels[i]]);
+        graphData.backgroundColor.push(labelColors[graphLabels[i]]);
+    }
+
+    if (area.find("#graphdist").length === 0) {
+        area.append("<canvas id='graphdist' width='100%' height='" + config.graphHeight + "px'></canvas>");
+        var ctx = area.find("#graphdist")[0];
+        ctx.style.backgroundColor = "rgba(255,255,255,0.25)";
+
+        console.log(graphLabels);
+        console.log(graphData);
+
+        try {
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartLabels,
+                    datasets: [graphData]
+                },
+                options: {
+                    legend: {
+                        position: "left",
+                        display: true,
+                        labels: {
+                            boxWidth: 20
+                        }    
+                    },
+                    tooltips: {
+                        enabled: true,
+                    },
+                    animation: {
+                        duration: 0
+                    }
+                }
+            });
+            area.data("graphdist", chart);
+        } catch(e) {
+            console.error(e);
+        }
+    } else {
+        chart = area.data("graphdist");
+        chart.data = {
+            labels: chartLabels,
+            datasets: [graphData]
+        };
+        chart.update();
     }
 }
 
@@ -303,8 +367,6 @@ function drawGraph(area, name, d) {
             console.error("Element ctx not defined");
         }
         try {
-            // TODO Add chart to area canvas element area.data("graph" + name, chart);
-            // Should be possible to later get chart back, change data and update it
             chart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -321,11 +383,14 @@ function drawGraph(area, name, d) {
                         }],
                         yAxes: [{
                             stacked: true,
-                            // ticks: {
-                            //     beginAtZero: true
-                            // }
+                            ticks: {
+                                beginAtZero: true
+                            }
                         }]
-                    }  
+                    },
+                    animation: {
+                        duration: 0
+                    }
                 }
             });
             area.data("graph" + name, chart);
@@ -339,8 +404,114 @@ function drawGraph(area, name, d) {
             labels: graphLabels,
             datasets: graphData
         };
+        chart.options.animation.duration = 1000;
         chart.update();
     }
+}
+
+function drawConfidence(area, name, d) {
+
+    // console.info(d);
+    // var graphLabels = [];
+    var graphData = [];
+
+    var labels = extractLabels(d);
+    var chart;
+
+    // Sort the labels. Sort of.
+    var graphLabels = sortKeys(d);
+
+    console.log(d);
+    console.log(graphLabels);
+
+    for (var i = 0; i < labels.length; ++i) {
+        var labelData = [];
+        for (var j = 1; j <= 5; ++j) {
+            var data;
+
+            data = d[j.toString()];
+            if (data) {
+                data = data[labels[i]];
+            }
+            if (data === undefined) {
+                data = 0;
+            }
+            labelData.push(data);
+        }
+        console.log(labelData); 
+        var lblCol = labelColors[labels[i]];
+        graphData.push({label: labels[i],
+            fill: false,
+            data: labelData,
+            backgroundColor: "rgba(" + lblCol.substring(4, lblCol.length - 1) + ",0.25)",
+            pointBackgroundColor: lblCol,
+            borderColor: lblCol
+        });
+    }
+
+    console.log(graphData);
+
+    var graphId = "#graph" + name;
+    if (area.find(graphId).length === 0) {
+        area.append("<canvas id='graph" + name + "' width='100%' height='" + config.graphHeight + "px'></canvas>");
+        var ctx = area.find(graphId)[0];
+        ctx.style.backgroundColor = 'rgba(255,255,255,0.25)';
+        if (!ctx) {
+            console.error("Element ctx not defined");
+        }
+        try {
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ["1","2","3","4","5"],
+                    datasets: graphData
+                },
+                options: {
+                    legend: {
+                        display: false,
+                    },
+                    scales: {
+                        yAxes: [{
+                            stacked: true,
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }]
+                    },
+                    animation: {
+                        duration: 0
+                    } 
+                }
+            });
+            area.data("graph" + name, chart);
+        } catch(e) {
+            console.error(e);
+        }
+    } else {
+        console.log("UPDATING CHART");
+        chart = area.data("graph" + name);
+        chart.data = {
+            labels: ["1","2","3","4","5"],
+            datasets: graphData
+        };
+        chart.update();
+    }
+}
+
+/*
+ * From StackOverflow: https://stackoverflow.com/questions/21646738/convert-hex-to-rgba
+ */
+function hexToRgbA(hex, transparency){
+    var c;
+    if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+        c= hex.substring(1).split('');
+        if(c.length== 3){
+            c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        c= '0x'+c.join('');
+        return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+',' + transparency + ')';
+    }
+    throw new Error('Bad Hex');
 }
 
 /**
@@ -604,11 +775,14 @@ function isConstraintsMet(el, teamRoles) {
  * @param {Element} el 
  * @returns {Array} An associative array with labels and their respective count
  */
-function getCardLabels(el) {
+function getCardLabels(el, mainRolesOnly) {
     var cardLabels = [];
     $(el).find("span.card-label").each(function() {
         var title = $(this).attr("title");
-         if (cardLabels[title] === undefined) {
+        if (mainRolesOnly && (title === "concern" || title.indexOf("*") !== -1)) {
+            return;
+        }
+        if (cardLabels[title] === undefined) {
             cardLabels[title] = 0;
         }
         cardLabels[title]++;
