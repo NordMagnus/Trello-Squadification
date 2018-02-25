@@ -143,6 +143,9 @@ describe('tdom', function() {
         })
     });
 
+    describe("getCardFields()", function() {
+        it("...")
+    });
     
     describe("countLabelsInList()", function() {
         it("...")

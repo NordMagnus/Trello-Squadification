@@ -94,12 +94,14 @@ var tdom = (function (factory) {
          */
         countListLabels(el, filter) {
             if (!el) {
-                throw new TypeError();
+                throw new TypeError("Parameter [el] not defined");
             }
             if (filter && !filter instanceof Array) {
-                throw new TypeError();
+                throw new TypeError("Parameter [filter] undefined or not of type Array");
             }
+
             let cardLabels = [];
+
             $(el).find("span.card-label").each(function () {
                 let title = $(this).attr("title");
                 if (filter) {
@@ -126,10 +128,10 @@ var tdom = (function (factory) {
          */
         getCardLabels(el, filter) {
             if (!el) {
-                throw new TypeError();
+                throw new TypeError("Parameter [el] not defined");
             }
             if (filter && !filter instanceof Array) {
-                throw new TypeError();
+                throw new TypeError("Parameter [filter] undefined or not of type Array");
             }
             let labels = [];
             $(el).find("span.card-label").each(function () {
@@ -147,11 +149,20 @@ var tdom = (function (factory) {
         },
 
         /**
+         * Gets an associative array with the fields for a given card, e.g.
+         * `{"fieldName": "fieldValue", ...}`
          * 
+         * @param {Element} cardEl The *DIV.list-card-details* element for the card
+         * @returns {Object} Associative array with field names and values
          */
-        getCardFields(listEl) {
+        getCardFields(cardEl) {
+            if (!cardEl) {
+                throw new TypeError("Parameter [cardEl] not defined");
+            }
+            
             let fields = [];
-            $(listEl).find("span.badge-text").each(function () {
+
+            $(cardEl).find("span.badge-text").each(function () {
                 let title = $(this).text();
                 let f = title.split(": ");
                 // Make sure it's a custom field
@@ -166,10 +177,28 @@ var tdom = (function (factory) {
         },
 
         /**
+         * Returns an associative array with the count for each label in that list, e.g.
+         * ```
+         * {
+         *     "Label 1": 3,
+         *     "Label 2": 2
+         * }
+         * ```
          * 
+         * @param {Element} listEl The list to check
+         * @param {Array} filter An optional filter with labels to exclude
+         * @returns {Object} Label count for the given list
          */
         countLabelsInList(listEl, filter) {
+            if (!listEl) {
+                throw new TypeError("Parameter [listEl] not defined");
+            }
+            if (filter && !filter instanceof Array) {
+                throw new TypeError("Parameter [filter] undefined or not of type Array");
+            }
+            
             let labels = [];
+
             $(listEl).find("span.card-label").each(function () {
                 var title = $(this).attr("title");
                 // FIXME Implement filter
@@ -185,7 +214,13 @@ var tdom = (function (factory) {
         },
 
         /**
-         * Returns an associative array with label names and the color code as RGB()
+         * Returns an associative array with label names and the color code as RGB(), e.g.
+         * ```
+         * {
+         *     "Label 1": "rgb(128,128,128)",
+         *     "Label 2": "rgb(255,128,128)"
+         * }
+         * ```
          * 
          * @returns {Object} Associative arrow with label names as property names and color codes as values 
          */
@@ -197,8 +232,16 @@ var tdom = (function (factory) {
                 labelColors[title] = bgCol;
             });
             return labelColors;
-        }
+        },
 
+        /**
+         * 
+         */
+        getCardsByLabels(title, filter) {
+            throw 'Not implemented'; // TODO Implement
+            // This could be used by tsqd.countTeamMembers() 
+        },
+        
     }
 
     return self;

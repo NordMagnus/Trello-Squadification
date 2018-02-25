@@ -15,9 +15,9 @@ var tsqd = (function (factory) {
     'use strict';
 
     var roleConstraints = []; // Role constraints, e.g. "BSA": 3
-    var constraintsListEl; // Element for list with constraints (a "js-list-content" class div)
+    // var constraintsListEl; // Element for list with constraints (a "js-list-content" class div)
     var constraintsObserver; // Mutation observer for constraints list
-    // var teamObservers = [];
+    var teamObservers = [];
     var labelColors;
     var teamMinSize;
     var teamMaxSize;
@@ -40,28 +40,52 @@ var tsqd = (function (factory) {
 
     var self = {
 
-        /*
-         *
+        /**
+         * Sets the debug flag. The module will output messages to the console
+         * when set to `true`.
+         * 
+         * @param {boolean} debug `true` to spam console, otherwise `false`
          */
         setDebug(debug) {
             config.debug = debug;
         },
 
         /**
+         * Initializes the Squadification extension by adding a `MutationObserver`
+         * to the `DIV#content` element, and explicitly calling `setupBoard` in case
+         * the first board loaded is a Squadification board.
          * 
+         * @returns {MutationObserver} The instantiated observer
          */
         initialize() {
             let jContent = $("div#content");
 
             if (!jContent.length) {
-                throw RangeError("DIV#content not found");
+                throw ReferenceError("DIV#content not found");
             }
 
             if (config.debug) {
                 console.info("Initializing squadification board");
             }
 
+            /*
+             * The intention is that this is only called when a new board is loaded.
+             */
             let trelloObserver = new MutationObserver(function (mutations) {
+                if (config.debug) {
+                    console.log("Observer invoked");
+                    if (self.isSquadificationBoard()) {
+                        console.log("...and it's a SQUAD BOARD!");
+                    }
+                }
+
+                if (constraintsObserver) {
+                    constraintsObserver.disconnect();
+                }
+                for (let i = 0; i < teamObservers.length; ++i) {
+                    teamObservers[i].disconnect();
+                }
+
                 if (mutations.length !== 0 && $(mutations[mutations.length - 1].addedNodes)
                     .has(`h2:contains('${config.constraintsListName}')`).length === 1) {
                     self.setupBoard();
@@ -76,13 +100,27 @@ var tsqd = (function (factory) {
             };
             trelloObserver.observe(jContent[0], conf);
 
-            self.setupBoard();
+            /*
+             * Call setupBoard if this happens to be a Squadification board.
+             */
+            if (self.isSquadificationBoard()) {
+                if (config.debug) {
+                    console.log("Calling setup board");
+                }
+                self.setupBoard();
+            }
 
             return trelloObserver;
         },
 
         /**
-         * 
+         * Setting up a squadification board.
+         *  - Gets all labels and colors
+         *  - Adds observers for constraints list and teams
+         *  - Adds header icons
+         *  - Does an initial runthrough parsing constraints and teams
+         * This method is called when the extension is first loaded and when
+         * a new board is loaded.
          */
         setupBoard() {
             let jCanvas = $("div.board-canvas");
@@ -113,7 +151,20 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * Checks if a squadification board seems to be loaded.
          * 
+         * @returns {boolean} true if it is a sqaudification board otherwise fasle
+         */
+        isSquadificationBoard() {
+            let jLists = $("div.js-list-content").has(`h2:contains('${config.constraintsListName}')`);
+            return jLists.length === 1;
+        },
+
+        /**
+         * Adds an observer for the constraints list. When this observer is triggered
+         * constraints are parsed and subsequently all teams are checked, too.
+         * 
+         * @param {jQuery} jCanvas The current canvas
          */
         addConstraintsObserver(jCanvas) {
             let jList = $("div.js-list-content").has(`h2:contains('${config.constraintsListName}')`);
@@ -154,13 +205,16 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * Adds observers for all team lists.
          * 
+         * @see addConstraintsObserver()
          */
         addTeamObservers(jCanvas) {
             if (!jCanvas) {
                 throw new TypeError("Parameter 'jCanvas' not specified");
             }
 
+            teamObservers = [];
             /*
              * Add an observer for all lists except for ones containing an asterisk
              * and the constraints list.
@@ -169,7 +223,7 @@ var tsqd = (function (factory) {
                 if (config.debug) {
                     console.log("Adding observer for " + tdom.getListName(this));
                 }
-                self.addTeamObserver(this);
+                teamObservers.push(self.addTeamObserver(this));
             });
         },
 
@@ -178,6 +232,7 @@ var tsqd = (function (factory) {
          * to the checkTeam method.
          * 
          * @param {Element} listEl The list
+         * @returns {MutationObserver} The observer (not the newspaper)
          */
         addTeamObserver(listEl) {
             if (!listEl) {
@@ -186,6 +241,7 @@ var tsqd = (function (factory) {
 
             var cardsEl = $(listEl).find("div.js-list-cards")[0];
             var listObserver = new MutationObserver(function (mutations) {
+                console.warn("Team observer INVOKED");
                 /*
                  * Ignore irrelevant changes.
                  * Attempting to skip recurring changes triggered by Trello, and only act
@@ -193,7 +249,6 @@ var tsqd = (function (factory) {
                  */
                 // TODO Optimize? Improve accuracy?
                 if (mutations[0].target.className === "js-badges") {
-                    // console.log("Skipping " + mutations[0].target.className);
                     return;
                 }
                 self.checkTeam(listEl);
@@ -205,10 +260,14 @@ var tsqd = (function (factory) {
                 subtree: true
             };
             listObserver.observe(cardsEl, conf);
+            return listObserver;
         },
 
         /**
-         * 
+         * Adds header icons to the board.
+         *  - **Fields** to toggle field visibility on and off
+         *  - **Pics** to choose how cover images are displayed
+         *  - **Stats** to toggle graphs on and off
          */
         addHeaderIcons() {
             // TODO Add some fancy pancy icons (how to use the ::before pseudoclass here?!?)
@@ -221,6 +280,8 @@ var tsqd = (function (factory) {
             $("div.header-user").prepend("<a id='toggle-fields' class='header-btn squad-enabled'>" +
                 "<span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span>" +
                 "<span class='header-btn-text'>Fields</span></a>");
+
+            // TODO Refactor to separate functions for readability and testability
 
             $("a#toggle-stats").click(function () {
                 $("div.graph-area").slideToggle("fast");
@@ -261,14 +322,19 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * Parses constraints in the given list. It is assumed the provided list is
+         * the *constraints list* for a squadification board.
          * 
+         * @param {jQuery} jList The list to parse
          */
         parseConstraints(jList) {
+            if (!jList) {
+                throw new TypeError("Parameter [jList] not defined");
+            }
+            
             roleConstraints = tdom.countLabelsInList(jList);
 
-            if (config.debug) {
-                console.log(roleConstraints);
-            }
+            // TODO Refactor: A lot of repetitive code upinhere
 
             var minSizeCard = jList.find("span.list-card-title:contains('size >')");
             if (minSizeCard.length !== 0) {
@@ -335,9 +401,16 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * This method makes the constraints list less obtrusive by making
+         * it melt in to the background lending colors from the board color scheme.
          * 
+         * @param {jQuery} jList The list to pretty-up
          */
         beautifyConstraintsList(jList) {
+            if (!jList) {
+                throw new TypeError("Parameter [jList] not defined");
+            }
+            
             jList.css("background-color", $("div#header").css("background-color"));
             jList.css("color", $("div#header").css("color"));
             var cardBg = $(".header-search-input").css("background-color");
@@ -347,6 +420,8 @@ var tsqd = (function (factory) {
 
         /**
          * Update visuals for all teams.
+         * 
+         * @see getTeamLists()
          */
         checkAllTeams() {
             self.getTeamLists().each(function () {
@@ -355,7 +430,12 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * Checks if one team (i.e. one list) meets parsed constraints. Also checks
+         * if there are any concern cards in the list and if team confidence is ok.
+         * Then adds/updates the status bar at the top accordingly. Also updates card
+         * colors and draws graphs.
          * 
+         * @param {Element} listEl The list element
          */
         checkTeam(listEl) {
             if (!listEl) {
@@ -427,7 +507,7 @@ var tsqd = (function (factory) {
          * where *undefined* indicates no member has that confidence level
          * and an array has different roles as keys, and number of
          * team members with that confident as value, e.g.
-         * `["PO": 1, "Dev": 2]
+         * `["PO": 1, "Dev": 2]`
          * 
          * @param {Array} field Array with length 6
          * @returns {Number} Team avg confidence or *undefined* if field not used
@@ -453,7 +533,13 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * Checks if constraints are met for a team.
+         *  - Checks individual roles from constraints list
+         *  - Checks number of team members
          * 
+         * @param {listEl} listEl The team list
+         * @param {Object} teamRoles Associative array with role count in team
+         * @returns {Array} Array with violations if any otherwise an empty array
          */
         isConstraintsMet(listEl, teamRoles) {
             let violationList = [];
@@ -487,7 +573,11 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * Counts the team members in a team (i.e. list). All cards containing at
+         * least one label (except concern cards) are assumed to be a real person :-)
          * 
+         * @param {Element} listEl The team list
+         * @returns {number} Number of members in team
          */
         countTeamMembers(listEl) {
             let teamMembers = $(listEl).find("div.list-card-details:has(span.card-label)")
@@ -501,7 +591,29 @@ var tsqd = (function (factory) {
         },
 
         /**
+         * Counts how many times each value for a field is used in the given list.
+         * Iterates through the list and for each card with a label iterates through the
+         * fields for that card building up an array like this:
+         * ```
+         * {
+         *   "Field 1": {
+         *     "Value A": {
+         *       "Label X": 3,
+         *       "Label Y": 2
+         *     },
+         *     "Value B": {
+         *       "Label X": 1,
+         *       "Label Y": 0
+         *     }
+         *   },
+         *   "Field 2": {
+         *     ...
+         *   }
+         * }
+         * ```
          * 
+         * @param {Element} listEl The list to get fields for
+         * @returns {Object} An associative array as described above
          */
         getFields(listEl) {
             if (!listEl) {
@@ -510,6 +622,7 @@ var tsqd = (function (factory) {
 
             let fields = [];
             $(listEl).find("div.list-card-details").each(function () {
+                // TODO Improve this: should only count team members - compare with "countTeamMembers" above
                 let labels = tdom.getCardLabels(this);
                 if (labels.length === 0) {
                     return;
@@ -533,7 +646,7 @@ var tsqd = (function (factory) {
         },
 
         /**
-         * 
+         * Adjusts size of cover images.
          */
         adjustCoverImages() {
             $("div.list-card-cover").filter(function () {
@@ -570,7 +683,6 @@ var tsqd = (function (factory) {
             self.drawRoleDistribution(jArea, listEl);
 
             for (var f in fields) {
-                console.log(f);
                 if (f === "Confidence") {
                     self.drawConfidence(jArea, f, fields[f]);
                 } else {
