@@ -18,7 +18,7 @@
     "description": "Distributed squadification for Trello",
     "content_scripts": [{
         "css": ["styles.css"],
-        "js": ["lib/jquery.js", "lib/Chart.js", "content.js"],
+        "js": ["lib/jquery.js", "lib/Chart.js", "tdom.js", "trello-squadification.js", "content.js"],
         "matches": ["https://trello.com/*"]
     }]
 }
