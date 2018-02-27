@@ -2,5 +2,5 @@
 
 console.info("Running SQUADIFICATION Chrome extension");
 
-tsqd.setDebug(true);
+tsqd.debug = true;
 tsqd.initialize();
