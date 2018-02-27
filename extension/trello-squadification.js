@@ -8,7 +8,6 @@ var tsqd = (function (factory) {
     if (typeof define === 'function' && define.amd) {
         define(['jquery'], factory);
     } else {
-        console.info("AMD not available: calling factory with jQuery");
         return factory(jQuery);
     }
 }(function ($) {
@@ -40,13 +39,29 @@ var tsqd = (function (factory) {
 
     var self = {
 
+        set maxSize(size) {
+            teamMaxSize = size;
+        },
+
+        set minSize(size) {
+            teamMinSize = size;
+        },
+
+        set minimumConfidence(conf) {
+            minConfidence = conf;
+        },
+
+        set roleConstraints(constraints) {
+            roleConstraints = constraints;
+        },
+
         /**
          * Sets the debug flag. The module will output messages to the console
          * when set to `true`.
          * 
          * @param {boolean} debug `true` to spam console, otherwise `false`
          */
-        setDebug(debug) {
+        set debug(debug) {
             config.debug = debug;
         },
 
@@ -198,9 +213,6 @@ var tsqd = (function (factory) {
          */
         getTeamLists() {
             let teamLists = tdom.getLists("", ["*", config.constraintsListName]);
-            if (config.debug) {
-                console.log(teamLists);
-            }
             return teamLists;
         },
 
@@ -241,7 +253,6 @@ var tsqd = (function (factory) {
 
             var cardsEl = $(listEl).find("div.js-list-cards")[0];
             var listObserver = new MutationObserver(function (mutations) {
-                console.warn("Team observer INVOKED");
                 /*
                  * Ignore irrelevant changes.
                  * Attempting to skip recurring changes triggered by Trello, and only act
@@ -448,6 +459,7 @@ var tsqd = (function (factory) {
             let violations;
             let fields;
             let teamConfidence;
+            let teamSize;
 
             statusEl = $(listEl).find("div.list-status");
             if (statusEl.length === 0) {
@@ -459,7 +471,8 @@ var tsqd = (function (factory) {
             violationsEl = $(listEl).find("div.violations").empty();
 
             teamRoles = tdom.countLabelsInList(listEl);
-            violations = self.isConstraintsMet(listEl, teamRoles);
+            teamSize = self.countTeamMembers(listEl);
+            violations = self.isConstraintsMet(teamSize, teamRoles);
             fields = self.getFields(listEl);
             teamConfidence = self.getTeamConfidence(fields["Confidence"]);
 
@@ -490,13 +503,16 @@ var tsqd = (function (factory) {
                 }
             }
 
-            let teamMembers = $(listEl).find("div.list-card-details:has(span.card-label)").not(":contains('concern')").length;
-            $(listEl).find("div.team-count").text(teamMembers);
+            /*
+             * Update the team member count.
+             */
+            $(listEl).find("div.team-count").text(teamSize);
 
             /*
              * Change color of cards without labels
              */
-            $(listEl).find("div.list-card-details:not(:has(span.card-label))").css("background-color", "rgba(180,180,180,0.2)");
+            $(listEl).find("div.list-card-details:not(:has(span.card-label))").css(
+                "background-color", "rgba(180,180,180,0.2)");
 
             self.drawTeamGraphs(listEl, fields);
         },
@@ -537,18 +553,31 @@ var tsqd = (function (factory) {
          *  - Checks individual roles from constraints list
          *  - Checks number of team members
          * 
-         * @param {listEl} listEl The team list
+         * @param {number} teamSize Number of people in team
          * @param {Object} teamRoles Associative array with role count in team
          * @returns {Array} Array with violations if any otherwise an empty array
          */
-        isConstraintsMet(listEl, teamRoles) {
-            let violationList = [];
+        isConstraintsMet(teamSize, teamRoles) {
+            let violations = [];
+
+            violations = self.checkTeamRoles(teamRoles);
+            violations = violations.concat(self.checkTeamSize(teamSize));
+
+            return violations;
+        },
+
+        /**
+         * 
+         */
+        checkTeamRoles(teamRoles) {
+            let violations = [];
+
             /*
              * Check if the # of any roles in team is less than the constraint
              */
             for (let role in teamRoles) {
                 if (roleConstraints[role] && roleConstraints[role] > teamRoles[role]) {
-                    violationList.push(`Not enough ${role}s`);
+                    violations.push(`Not enough ${role}s`);
                 }
             }
 
@@ -557,21 +586,28 @@ var tsqd = (function (factory) {
              */
             for (let role in roleConstraints) {
                 if (!teamRoles[role]) {
-                    violationList.push("No " + role);
+                    violations.push("No " + role);
                 }
             }
 
-            let teamMembers = self.countTeamMembers(listEl);
+            return violations;
+        },
+        
+        /**
+         * 
+         */
+        checkTeamSize(teamSize) {
+            let violations = [];
 
-            if (teamMinSize !== undefined && teamMembers <= teamMinSize) {
-                violationList.push("Not enough members");
-            } else if (teamMaxSize !== undefined && teamMembers >= teamMaxSize) {
-                violationList.push("Too many members");
+            if (teamMinSize !== undefined && teamSize <= teamMinSize) {
+                violations.push("Not enough members");
+            } else if (teamMaxSize !== undefined && teamSize >= teamMaxSize) {
+                violations.push("Too many members");
             }
 
-            return violationList;
+            return violations;
         },
-
+        
         /**
          * Counts the team members in a team (i.e. list). All cards containing at
          * least one label (except concern cards) are assumed to be a real person :-)
@@ -582,11 +618,6 @@ var tsqd = (function (factory) {
         countTeamMembers(listEl) {
             let teamMembers = $(listEl).find("div.list-card-details:has(span.card-label)")
                 .not(":contains('concern')").length;
-            if (config.debug) {
-                console.log("# of team members in " +
-                    tdom.getListName(listEl) + ": " +
-                    teamMembers);
-            }
             return teamMembers;
         },
 
