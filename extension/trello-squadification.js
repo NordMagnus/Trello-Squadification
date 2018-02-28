@@ -1,9 +1,4 @@
-/* global define */
-/* global jQuery */
-/* global tdom */
-/* global Chart */
-
-var tsqd = (function (factory) {
+const tsqd = (function (factory) {
     'use strict';
     if (typeof define === 'function' && define.amd) {
         define(['jquery'], factory);
@@ -13,17 +8,17 @@ var tsqd = (function (factory) {
 }(function ($) {
     'use strict';
 
-    var roleConstraints = []; // Role constraints, e.g. "BSA": 3
+    let roleConstraints = []; // Role constraints, e.g. "BSA": 3
     // var constraintsListEl; // Element for list with constraints (a "js-list-content" class div)
-    var constraintsObserver; // Mutation observer for constraints list
-    var teamObservers = [];
-    var labelColors;
-    var teamMinSize;
-    var teamMaxSize;
-    var minConfidence;
-    var picSize = 2; // Cover image size: 0=hide, 1=small (using imageHeight), 2=original
+    let constraintsObserver; // Mutation observer for constraints list
+    let teamObservers = [];
+    let labelColors;
+    let teamMinSize;
+    let teamMaxSize;
+    let minConfidence;
+    let picSize = 2; // Cover image size: 0=hide, 1=small (using imageHeight), 2=original
 
-    var config = {
+    let config = {
 
         constraintsListName: "Squadification Constraints",
         validTeamColor: "#86b623",
@@ -34,10 +29,10 @@ var tsqd = (function (factory) {
         graphHeight: 32,
         coverBgColor: "#323232",
 
-        debug: false
+        debug: false,
     };
 
-    var self = {
+    const self = {
 
         set maxSize(size) {
             teamMaxSize = size;
@@ -58,7 +53,7 @@ var tsqd = (function (factory) {
         /**
          * Sets the debug flag. The module will output messages to the console
          * when set to `true`.
-         * 
+         *
          * @param {boolean} debug `true` to spam console, otherwise `false`
          */
         set debug(debug) {
@@ -69,7 +64,7 @@ var tsqd = (function (factory) {
          * Initializes the Squadification extension by adding a `MutationObserver`
          * to the `DIV#content` element, and explicitly calling `setupBoard` in case
          * the first board loaded is a Squadification board.
-         * 
+         *
          * @returns {MutationObserver} The instantiated observer
          */
         initialize() {
@@ -111,7 +106,7 @@ var tsqd = (function (factory) {
                 attributes: false,
                 childList: true,
                 characterData: false,
-                subtree: false
+                subtree: false,
             };
             trelloObserver.observe(jContent[0], conf);
 
@@ -167,7 +162,7 @@ var tsqd = (function (factory) {
 
         /**
          * Checks if a squadification board seems to be loaded.
-         * 
+         *
          * @returns {boolean} true if it is a sqaudification board otherwise fasle
          */
         isSquadificationBoard() {
@@ -178,7 +173,7 @@ var tsqd = (function (factory) {
         /**
          * Adds an observer for the constraints list. When this observer is triggered
          * constraints are parsed and subsequently all teams are checked, too.
-         * 
+         *
          * @param {jQuery} jCanvas The current canvas
          */
         addConstraintsObserver(jCanvas) {
@@ -196,11 +191,11 @@ var tsqd = (function (factory) {
                 self.checkAllTeams(jCanvas);
             });
 
-            var conf = {
+            let conf = {
                 attributes: false,
                 childList: true,
                 characterData: true,
-                subtree: true
+                subtree: true,
             };
             constraintsObserver.observe(jList[0], conf);
         },
@@ -208,7 +203,7 @@ var tsqd = (function (factory) {
         /**
          * Convenience method to get all lists that represent teams, i.e. all lists without an asterisk
          * and not the constraints list.
-         * 
+         *
          * @returns {jQuery} jQuery object with list elements
          */
         getTeamLists() {
@@ -218,7 +213,7 @@ var tsqd = (function (factory) {
 
         /**
          * Adds observers for all team lists.
-         * 
+         *
          * @see addConstraintsObserver()
          */
         addTeamObservers(jCanvas) {
@@ -233,7 +228,7 @@ var tsqd = (function (factory) {
              */
             self.getTeamLists().each(function () {
                 if (config.debug) {
-                    console.log("Adding observer for " + tdom.getListName(this));
+                    console.log(`Adding observer for ${tdom.getListName(this)}`);
                 }
                 teamObservers.push(self.addTeamObserver(this));
             });
@@ -242,7 +237,7 @@ var tsqd = (function (factory) {
         /**
          * Adds an observer to a list's *DIV.js-list-cards* element and hooks it up
          * to the checkTeam method.
-         * 
+         *
          * @param {Element} listEl The list
          * @returns {MutationObserver} The observer (not the newspaper)
          */
@@ -251,8 +246,8 @@ var tsqd = (function (factory) {
                 throw new TypeError("Parameter 'listEl' not specified");
             }
 
-            var cardsEl = $(listEl).find("div.js-list-cards")[0];
-            var listObserver = new MutationObserver(function (mutations) {
+            let cardsEl = $(listEl).find("div.js-list-cards")[0];
+            let listObserver = new MutationObserver(function (mutations) {
                 /*
                  * Ignore irrelevant changes.
                  * Attempting to skip recurring changes triggered by Trello, and only act
@@ -264,11 +259,11 @@ var tsqd = (function (factory) {
                 }
                 self.checkTeam(listEl);
             });
-            var conf = {
+            let conf = {
                 attributes: false,
                 childList: true,
                 characterData: true,
-                subtree: true
+                subtree: true,
             };
             listObserver.observe(cardsEl, conf);
             return listObserver;
@@ -312,9 +307,9 @@ var tsqd = (function (factory) {
                     $("div.list-card-cover").filter(function () {
                         return $(this).css("background-image") !== "none";
                     }).each(function () {
-                        var originalHeight = $(this).data("original-height");
+                        let originalHeight = $(this).data("original-height");
                         $(this).css("height", originalHeight).css("background-size", "contain");
-                    })
+                    });
 
                     $(this).toggleClass("squad-disabled squad-enabled");
                     picSize = 2;
@@ -335,21 +330,21 @@ var tsqd = (function (factory) {
         /**
          * Parses constraints in the given list. It is assumed the provided list is
          * the *constraints list* for a squadification board.
-         * 
+         *
          * @param {jQuery} jList The list to parse
          */
         parseConstraints(jList) {
             if (!jList) {
                 throw new TypeError("Parameter [jList] not defined");
             }
-            
+
             roleConstraints = tdom.countLabelsInList(jList);
 
             // TODO Refactor: A lot of repetitive code upinhere
 
-            var minSizeCard = jList.find("span.list-card-title:contains('size >')");
+            let minSizeCard = jList.find("span.list-card-title:contains('size >')");
             if (minSizeCard.length !== 0) {
-                var text = minSizeCard
+                let text = minSizeCard
                     .clone() //clone the element
                     .children() //select all the children
                     .remove() //remove all the children
@@ -362,15 +357,15 @@ var tsqd = (function (factory) {
                     teamMinSize = parseInt(text.substring(text.indexOf(">") + 1));
                 }
                 if (config.debug) {
-                    console.log("Minimum team size (-1): " + teamMinSize);
+                    console.log(`Minimum team size (-1): ${teamMinSize}`);
                 }
             } else {
                 teamMinSize = undefined;
             }
 
-            var maxSizeCard = jList.find("span.list-card-title:contains('size <')");
+            let maxSizeCard = jList.find("span.list-card-title:contains('size <')");
             if (maxSizeCard.length !== 0) {
-                var text = maxSizeCard
+                let text = maxSizeCard
                     .clone() //clone the element
                     .children() //select all the children
                     .remove() //remove all the children
@@ -383,15 +378,15 @@ var tsqd = (function (factory) {
                     teamMaxSize = parseInt(text.substring(text.indexOf("<") + 1));
                 }
                 if (config.debug) {
-                    console.log("Maximum team size (+1): " + teamMaxSize);
+                    console.log(`Maximum team size (+1): ${teamMaxSize}`);
                 }
             } else {
                 teamMaxSize = undefined;
             }
 
-            var minConfidenceCard = jList.find("span.list-card-title:contains('confidence >')");
+            let minConfidenceCard = jList.find("span.list-card-title:contains('confidence >')");
             if (minConfidenceCard.length !== 0) {
-                var text = minConfidenceCard
+                let text = minConfidenceCard
                     .clone() //clone the element
                     .children() //select all the children
                     .remove() //remove all the children
@@ -404,7 +399,7 @@ var tsqd = (function (factory) {
                     minConfidence = parseInt(text.substring(text.indexOf(">") + 1));
                 }
                 if (config.debug) {
-                    console.log("Minimum confidence (-1): " + minConfidence);
+                    console.log(`Minimum confidence (-1): ${minConfidence}`);
                 }
             } else {
                 minConfidence = undefined;
@@ -414,30 +409,30 @@ var tsqd = (function (factory) {
         /**
          * This method makes the constraints list less obtrusive by making
          * it melt in to the background lending colors from the board color scheme.
-         * 
+         *
          * @param {jQuery} jList The list to pretty-up
          */
         beautifyConstraintsList(jList) {
             if (!jList) {
                 throw new TypeError("Parameter [jList] not defined");
             }
-            
+
             jList.css("background-color", $("div#header").css("background-color"));
             jList.css("color", $("div#header").css("color"));
-            var cardBg = $(".header-search-input").css("background-color");
+            let cardBg = $(".header-search-input").css("background-color");
             jList.find("a.list-card").css("background-color", cardBg).css(
                 "border", "0px solid");
         },
 
         /**
          * Update visuals for all teams.
-         * 
+         *
          * @see getTeamLists()
          */
         checkAllTeams() {
             self.getTeamLists().each(function () {
                 self.checkTeam(this);
-            })
+            });
         },
 
         /**
@@ -445,7 +440,7 @@ var tsqd = (function (factory) {
          * if there are any concern cards in the list and if team confidence is ok.
          * Then adds/updates the status bar at the top accordingly. Also updates card
          * colors and draws graphs.
-         * 
+         *
          * @param {Element} listEl The list element
          */
         checkTeam(listEl) {
@@ -483,22 +478,22 @@ var tsqd = (function (factory) {
                 violationsEl.html(violations.join("<br/>"));
             } else {
                 if (teamRoles["concern"] !== undefined) {
-                    var concernCards = $(listEl).find("div.list-card-details:has(span.card-label):contains('concern')");
+                    let concernCards = $(listEl).find("div.list-card-details:has(span.card-label):contains('concern')");
                     concernCards.css("background-color", "rgba(255,128,96,0.4)");
-                    var cardTitles = concernCards.find("span.list-card-title");
+                    let cardTitles = concernCards.find("span.list-card-title");
                     cardTitles.each(function () {
-                        var text = $(this)
+                        let text = $(this)
                             .clone() //clone the element
                             .children() //select all the children
                             .remove() //remove all the children
                             .end() //again go back to selected element
                             .text();
-                        violationsEl.append(text + "<br/>");
+                        violationsEl.append(`${text}<br/>`);
                     });
                     statusEl.css("background-color", config.unconfidentTeamColor);
                 }
                 if (minConfidence !== undefined && teamConfidence !== undefined && teamConfidence < minConfidence + 1) {
-                    violationsEl.append("Low confidence score (" + teamConfidence.toFixed(1) + ")<br/>");
+                    violationsEl.append(`Low confidence score (${teamConfidence.toFixed(1)})<br/>`);
                     statusEl.css("background-color", config.unconfidentTeamColor);
                 }
             }
@@ -524,7 +519,7 @@ var tsqd = (function (factory) {
          * and an array has different roles as keys, and number of
          * team members with that confident as value, e.g.
          * `["PO": 1, "Dev": 2]`
-         * 
+         *
          * @param {Array} field Array with length 6
          * @returns {Number} Team avg confidence or *undefined* if field not used
          */
@@ -552,7 +547,7 @@ var tsqd = (function (factory) {
          * Checks if constraints are met for a team.
          *  - Checks individual roles from constraints list
          *  - Checks number of team members
-         * 
+         *
          * @param {number} teamSize Number of people in team
          * @param {Object} teamRoles Associative array with role count in team
          * @returns {Array} Array with violations if any otherwise an empty array
@@ -567,7 +562,10 @@ var tsqd = (function (factory) {
         },
 
         /**
-         * 
+         * Checks if the team has the roles as defined by the constraints list.
+         * ?
+         * @param {Object} teamRoles Assoc array with team role count
+         * @returns {Array} List with violations
          */
         checkTeamRoles(teamRoles) {
             let violations = [];
@@ -576,7 +574,8 @@ var tsqd = (function (factory) {
              * Check if the # of any roles in team is less than the constraint
              */
             for (let role in teamRoles) {
-                if (roleConstraints[role] && roleConstraints[role] > teamRoles[role]) {
+                if (roleConstraints[role] && teamRoles[role] &&
+                    roleConstraints[role] > teamRoles[role]) {
                     violations.push(`Not enough ${role}s`);
                 }
             }
@@ -586,15 +585,18 @@ var tsqd = (function (factory) {
              */
             for (let role in roleConstraints) {
                 if (!teamRoles[role]) {
-                    violations.push("No " + role);
+                    violations.push(`No ${role}`);
                 }
             }
 
             return violations;
         },
-        
+
         /**
-         * 
+         * Checks if the team has the mandated minimum/maximum members.
+         *
+         * @param {number} teamSize Number of people in team
+         * @returns {Array} List with violations
          */
         checkTeamSize(teamSize) {
             let violations = [];
@@ -607,11 +609,11 @@ var tsqd = (function (factory) {
 
             return violations;
         },
-        
+
         /**
          * Counts the team members in a team (i.e. list). All cards containing at
          * least one label (except concern cards) are assumed to be a real person :-)
-         * 
+         *
          * @param {Element} listEl The team list
          * @returns {number} Number of members in team
          */
@@ -642,7 +644,7 @@ var tsqd = (function (factory) {
          *   }
          * }
          * ```
-         * 
+         *
          * @param {Element} listEl The list to get fields for
          * @returns {Object} An associative array as described above
          */
@@ -687,11 +689,11 @@ var tsqd = (function (factory) {
                 $(this).css("height", config.imageHeight)
                     .css("background-size", "contain")
                     .css("background-color", config.coverBgColor);
-            })
+            });
         },
 
         /**
-         * 
+         *
          */
         drawTeamGraphs(listEl, fields) {
             if (!listEl) {
@@ -703,7 +705,7 @@ var tsqd = (function (factory) {
 
             let jArea = $(listEl).find("div.graph-area");
             if (jArea.length === 0) {
-                var listHeader = $(listEl).find("div.list-header");
+                let listHeader = $(listEl).find("div.list-header");
                 if (listHeader.length === 0) {
                     console.error("list-header not found");
                 }
@@ -713,7 +715,7 @@ var tsqd = (function (factory) {
 
             self.drawRoleDistribution(jArea, listEl);
 
-            for (var f in fields) {
+            for (let f in fields) {
                 if (f === "Confidence") {
                     self.drawConfidence(jArea, f, fields[f]);
                 } else {
@@ -723,7 +725,7 @@ var tsqd = (function (factory) {
         },
 
         /**
-         * 
+         *
          */
         drawRoleDistribution(jArea, listEl) {
             let labels = tdom.countListLabels(listEl, ["*", "concern"]);
@@ -732,18 +734,18 @@ var tsqd = (function (factory) {
             let chart;
             let graphData = {
                 backgroundColor: [],
-                data: []
+                data: [],
             };
 
-            for (var i = 0; i < graphLabels.length; ++i) {
+            for (let i = 0; i < graphLabels.length; ++i) {
                 graphData.data.push(labels[graphLabels[i]]);
                 chartLabels.push(labels[graphLabels[i]]);
                 graphData.backgroundColor.push(labelColors[graphLabels[i]]);
             }
 
             if (jArea.find("#graphdist").length === 0) {
-                jArea.append("<canvas id='graphdist' width='100%' height='" + config.graphHeight + "px'></canvas>");
-                var ctx = jArea.find("#graphdist")[0];
+                jArea.append(`<canvas id='graphdist' width='100%' height='${config.graphHeight}px'></canvas>`);
+                let ctx = jArea.find("#graphdist")[0];
                 ctx.style.backgroundColor = "rgba(255,255,255,0.25)";
 
                 try {
@@ -751,23 +753,23 @@ var tsqd = (function (factory) {
                         type: 'doughnut',
                         data: {
                             labels: chartLabels,
-                            datasets: [graphData]
+                            datasets: [graphData],
                         },
                         options: {
                             legend: {
                                 position: "left",
                                 display: true,
                                 labels: {
-                                    boxWidth: 20
-                                }
+                                    boxWidth: 20,
+                                },
                             },
                             tooltips: {
                                 enabled: true,
                             },
                             animation: {
-                                duration: 0
-                            }
-                        }
+                                duration: 0,
+                            },
+                        },
                     });
                     jArea.data("graphdist", chart);
                 } catch (e) {
@@ -777,14 +779,14 @@ var tsqd = (function (factory) {
                 chart = jArea.data("graphdist");
                 chart.data = {
                     labels: chartLabels,
-                    datasets: [graphData]
+                    datasets: [graphData],
                 };
                 chart.update();
             }
         },
 
         /**
-         * 
+         *
          */
         drawGraph(jArea, name, values) {
             if (!jArea) {
@@ -801,32 +803,32 @@ var tsqd = (function (factory) {
             let chart;
             let graphLabels = self.sortKeys(values);
 
-            for (var i = 0; i < labels.length; ++i) {
-                var labelData = [];
-                for (var j = 0; j < graphLabels.length; ++j) {
+            for (let i = 0; i < labels.length; ++i) {
+                let labelData = [];
+                for (let j = 0; j < graphLabels.length; ++j) {
                     labelData.push(values[graphLabels[j]][labels[i]]);
                 }
                 graphData.push({
                     label: labels[i],
                     data: labelData,
-                    backgroundColor: labelColors[labels[i]]
+                    backgroundColor: labelColors[labels[i]],
                 });
             }
 
-            var graphId = "#graph" + name;
+            let graphId = `#graph${name}`;
             if (jArea.find(graphId).length === 0) {
-                jArea.append("<canvas id='graph" + name + "' width='100%' height='" + config.graphHeight + "px'></canvas>");
-                var ctx = jArea.find(graphId)[0];
+                jArea.append(`<canvas id='graph${name}' width='100%' height='${config.graphHeight}px'></canvas>`);
+                let ctx = jArea.find(graphId)[0];
                 ctx.style.backgroundColor = 'rgba(255,255,255,0.25)';
                 if (!ctx) {
-                    throw new ReferenceError("Canvas for '" + graphId + "' not found");
+                    throw new ReferenceError(`Canvas for '${graphId}' not found`);
                 }
                 try {
                     chart = new Chart(ctx, {
                         type: 'bar',
                         data: {
                             labels: graphLabels,
-                            datasets: graphData
+                            datasets: graphData,
                         },
                         options: {
                             legend: {
@@ -839,24 +841,24 @@ var tsqd = (function (factory) {
                                 yAxes: [{
                                     stacked: true,
                                     ticks: {
-                                        beginAtZero: true
-                                    }
-                                }]
+                                        beginAtZero: true,
+                                    },
+                                }],
                             },
                             animation: {
-                                duration: 0
-                            }
-                        }
+                                duration: 0,
+                            },
+                        },
                     });
-                    jArea.data("graph" + name, chart);
+                    jArea.data(`graph${name}`, chart);
                 } catch (e) {
                     console.error(e);
                 }
             } else {
-                chart = jArea.data("graph" + name);
+                chart = jArea.data(`graph${name}`);
                 chart.data = {
                     labels: graphLabels,
-                    datasets: graphData
+                    datasets: graphData,
                 };
                 chart.options.animation.duration = 1000;
                 chart.update();
@@ -864,18 +866,18 @@ var tsqd = (function (factory) {
         },
 
         /**
-         * 
+         *
          */
         drawConfidence(jArea, name, values) {
-            var graphData = [];
+            let graphData = [];
 
-            var labels = self.extractLabels(values);
-            var chart;
+            let labels = self.extractLabels(values);
+            let chart;
 
-            for (var i = 0; i < labels.length; ++i) {
-                var labelData = [];
-                for (var j = 1; j <= 5; ++j) {
-                    var data;
+            for (let i = 0; i < labels.length; ++i) {
+                let labelData = [];
+                for (let j = 1; j <= 5; ++j) {
+                    let data;
 
                     data = values[j.toString()];
                     if (data) {
@@ -886,21 +888,21 @@ var tsqd = (function (factory) {
                     }
                     labelData.push(data);
                 }
-                var lblCol = labelColors[labels[i]];
+                let lblCol = labelColors[labels[i]];
                 graphData.push({
                     label: labels[i],
                     fill: false,
                     data: labelData,
-                    backgroundColor: "rgba(" + lblCol.substring(4, lblCol.length - 1) + ",0.25)",
+                    backgroundColor: `rgba(${lblCol.substring(4, lblCol.length - 1)},0.25)`,
                     pointBackgroundColor: lblCol,
-                    borderColor: lblCol
+                    borderColor: lblCol,
                 });
             }
 
-            var graphId = "#graph" + name;
+            let graphId = `#graph${name}`;
             if (jArea.find(graphId).length === 0) {
-                jArea.append("<canvas id='graph" + name + "' width='100%' height='" + config.graphHeight + "px'></canvas>");
-                var ctx = jArea.find(graphId)[0];
+                jArea.append(`<canvas id='graph${name}' width='100%' height='${config.graphHeight}px'></canvas>`);
+                let ctx = jArea.find(graphId)[0];
                 ctx.style.backgroundColor = 'rgba(255,255,255,0.25)';
                 if (!ctx) {
                     console.error("Element ctx not defined");
@@ -910,7 +912,7 @@ var tsqd = (function (factory) {
                         type: 'line',
                         data: {
                             labels: ["1", "2", "3", "4", "5"],
-                            datasets: graphData
+                            datasets: graphData,
                         },
                         options: {
                             legend: {
@@ -920,24 +922,24 @@ var tsqd = (function (factory) {
                                 yAxes: [{
                                     stacked: true,
                                     ticks: {
-                                        beginAtZero: true
-                                    }
-                                }]
+                                        beginAtZero: true,
+                                    },
+                                }],
                             },
                             animation: {
-                                duration: 0
-                            }
-                        }
+                                duration: 0,
+                            },
+                        },
                     });
-                    jArea.data("graph" + name, chart);
+                    jArea.data(`graph${name}`, chart);
                 } catch (e) {
                     console.error(e);
                 }
             } else {
-                chart = jArea.data("graph" + name);
+                chart = jArea.data(`graph${name}`);
                 chart.data = {
                     labels: ["1", "2", "3", "4", "5"],
-                    datasets: graphData
+                    datasets: graphData,
                 };
                 chart.update();
             }
@@ -947,13 +949,13 @@ var tsqd = (function (factory) {
          * Assuming an associative multi dimension array (an array where each element in turn
          * is an associative array) this function extracts the array element names from the inner
          * array. Any duplicates are removed.
-         * 
+         *
          * @param {Array} data 2-dimension associative array
          */
         extractLabels(data) {
-            var labels = [];
-            for (var field in data) {
-                for (var lbl in data[field]) {
+            let labels = [];
+            for (let field in data) {
+                for (let lbl in data[field]) {
                     if (labels.indexOf(lbl) === -1) {
                         labels.push(lbl);
                     }
@@ -964,12 +966,12 @@ var tsqd = (function (factory) {
 
         /**
          * Returns an array with the given object's properties sorted alphabetically.
-         * 
+         *
          * @param {Object} obj Object which properites to sort
          */
         sortKeys(obj) {
-            var keys = [];
-            for (var key in obj) {
+            let keys = [];
+            for (let key in obj) {
                 if (obj.hasOwnProperty(key)) {
                     keys.push(key);
                 }
@@ -977,7 +979,7 @@ var tsqd = (function (factory) {
             return keys.sort();
         },
 
-    }
+    };
 
     return self;
 }));

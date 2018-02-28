@@ -1,7 +1,8 @@
 /* global define */
 /* global jQuery */
 
-var tdom = (function (factory) {
+// eslint-disable-next-line no-unused-vars
+const tdom = (function (factory) {
     'use strict';
     if (typeof define === 'function' && define.amd) {
         define(['jquery'], factory);
@@ -11,11 +12,11 @@ var tdom = (function (factory) {
 }(function ($) {
     'use strict';
 
-    var self = {
+    const self = {
 
         /**
          * Given a parent element, returns the name of the list.
-         * 
+         *
          * @param {Element} el Parent element
          * @returns {String} The name of the list
          */
@@ -35,15 +36,15 @@ var tdom = (function (factory) {
 
         /**
          * Gets all **DIV.js-list-content** elements matching the given parameters.
-         * 
+         *
          * @param {String} name String that name of list should contain
          * @param {Array} filter Array of strings that name of list should *not* contain
          * @returns {jQuery} A jQuery object with the elements
          */
         getLists(name, filter) {
-            var jLists;
+            let jLists;
 
-            jLists = $("div.js-list-content").has("h2:contains('" + (name || "") + "')");
+            jLists = $("div.js-list-content").has(`h2:contains('${name||""}')`);
 
             if (filter !== undefined) {
                 jLists = jLists.filter(function () {
@@ -62,7 +63,7 @@ var tdom = (function (factory) {
 
         /**
          * Gets all cards with a specific string in the title.
-         * 
+         *
          * @returns {jQuery} jQuery object with card DOM elements or <code>null</code> if no cards found
          * @throws {TypeError} when missing parameter
          */
@@ -87,8 +88,8 @@ var tdom = (function (factory) {
 
         /**
          * Get a count for all labels used in a list.
-         * 
-         * @param {Element} el 
+         *
+         * @param {Element} el
          * @param {Array} filter An array with strings. Labels will be excluded if they contain any of the strings
          * @returns {Array} An associative array with labels and their respective count
          */
@@ -96,7 +97,7 @@ var tdom = (function (factory) {
             if (!el) {
                 throw new TypeError("Parameter [el] not defined");
             }
-            if (filter && !filter instanceof Array) {
+            if (filter && !(filter instanceof Array)) {
                 throw new TypeError("Parameter [filter] undefined or not of type Array");
             }
 
@@ -121,7 +122,7 @@ var tdom = (function (factory) {
 
         /**
          * Get the labels for a specific card.
-         * 
+         *
          * @param {Element} el The card item
          * @param {Array} filter An array with strings. Labels will be excluded if they contain any of the strings
          * @returns {Array} An array with card labels
@@ -130,7 +131,7 @@ var tdom = (function (factory) {
             if (!el) {
                 throw new TypeError("Parameter [el] not defined");
             }
-            if (filter && !filter instanceof Array) {
+            if (filter && !(filter instanceof Array)) {
                 throw new TypeError("Parameter [filter] undefined or not of type Array");
             }
             let labels = [];
@@ -151,7 +152,7 @@ var tdom = (function (factory) {
         /**
          * Gets an associative array with the fields for a given card, e.g.
          * `{"fieldName": "fieldValue", ...}`
-         * 
+         *
          * @param {Element} cardEl The *DIV.list-card-details* element for the card
          * @returns {Object} Associative array with field names and values
          */
@@ -159,7 +160,7 @@ var tdom = (function (factory) {
             if (!cardEl) {
                 throw new TypeError("Parameter [cardEl] not defined");
             }
-            
+
             let fields = [];
 
             $(cardEl).find("span.badge-text").each(function () {
@@ -184,7 +185,7 @@ var tdom = (function (factory) {
          *     "Label 2": 2
          * }
          * ```
-         * 
+         *
          * @param {Element} listEl The list to check
          * @param {Array} filter An optional filter with labels to exclude
          * @returns {Object} Label count for the given list
@@ -193,14 +194,14 @@ var tdom = (function (factory) {
             if (!listEl) {
                 throw new TypeError("Parameter [listEl] not defined");
             }
-            if (filter && !filter instanceof Array) {
+            if (filter && !(filter instanceof Array)) {
                 throw new TypeError("Parameter [filter] undefined or not of type Array");
             }
-            
+
             let labels = [];
 
             $(listEl).find("span.card-label").each(function () {
-                var title = $(this).attr("title");
+                let title = $(this).attr("title");
                 // FIXME Implement filter
                 // if (mainRolesOnly && (title === "concern" || title.indexOf("*") !== -1)) {
                 //     return;
@@ -221,28 +222,28 @@ var tdom = (function (factory) {
          *     "Label 2": "rgb(255,128,128)"
          * }
          * ```
-         * 
-         * @returns {Object} Associative arrow with label names as property names and color codes as values 
+         *
+         * @returns {Object} Associative arrow with label names as property names and color codes as values
          */
         getLabelColors() {
             let labelColors = [];
             $("div.board-canvas").find("span.card-label").each(function () {
-                var title = $(this).attr("title");
-                var bgCol = $(this).css("backgroundColor");
+                let title = $(this).attr("title");
+                let bgCol = $(this).css("backgroundColor");
                 labelColors[title] = bgCol;
             });
             return labelColors;
         },
 
         /**
-         * 
+         *
          */
         getCardsByLabels(title, filter) {
             throw 'Not implemented'; // TODO Implement
-            // This could be used by tsqd.countTeamMembers() 
+            // This could be used by tsqd.countTeamMembers()
         },
-        
-    }
+
+    };
 
     return self;
 }));
