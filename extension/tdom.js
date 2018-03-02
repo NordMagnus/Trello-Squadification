@@ -1,5 +1,3 @@
-/* global define */
-/* global jQuery */
 
 // eslint-disable-next-line no-unused-vars
 const tdom = (function (factory) {
@@ -93,8 +91,8 @@ const tdom = (function (factory) {
          * @param {Array} filter An array with strings. Labels will be excluded if they contain any of the strings
          * @returns {Array} An associative array with labels and their respective count
          */
-        countListLabels(el, filter) {
-            if (!el) {
+        countListLabels(jLists, filter) {
+            if (!jLists) {
                 throw new TypeError("Parameter [el] not defined");
             }
             if (filter && !(filter instanceof Array)) {
@@ -103,7 +101,7 @@ const tdom = (function (factory) {
 
             let cardLabels = [];
 
-            $(el).find("span.card-label").each(function () {
+            jLists.find("span.card-label").each(function () {
                 let title = $(this).attr("title");
                 if (filter) {
                     for (let i = 0; i < filter.length; ++i) {
@@ -117,6 +115,7 @@ const tdom = (function (factory) {
                 }
                 cardLabels[title]++;
             });
+
             return cardLabels;
         },
 

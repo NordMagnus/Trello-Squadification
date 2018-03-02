@@ -1,0 +1,20 @@
+icon-sm
+icon-star
+icon-remove
+icon-add
+icon-clock
+icon-close
+icon-organization
+icon-business-class
+icon-search
+icon-board
+icon-external-link
+icon-information
+icon-notification
+icon-description
+icon-filter
+!! icon-img
+icon-subscribe
+icon-calendar
+icon-edit
+icon-attachment

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 const tsqd = (function (factory) {
     'use strict';
     if (typeof define === 'function' && define.amd) {
@@ -24,9 +25,18 @@ const tsqd = (function (factory) {
         validTeamColor: "#86b623",
         unconfidentTeamColor: "#bb9922",
         invalidTeamColor: "#cc4400",
-
+        graphLayout: {
+            width: "100%",
+            height: "96px",
+            class: "list-graph",
+            legend: {
+                display: false,
+                fontSize: 12,
+                boxWidth: 20,
+            },
+            animations: 0,
+        },
         imageHeight: 64,
-        graphHeight: 32,
         coverBgColor: "#323232",
 
         debug: false,
@@ -269,6 +279,7 @@ const tsqd = (function (factory) {
             return listObserver;
         },
 
+        // <span class='header-btn-text'>Stats</span>
         /**
          * Adds header icons to the board.
          *  - **Fields** to toggle field visibility on and off
@@ -278,14 +289,14 @@ const tsqd = (function (factory) {
         addHeaderIcons() {
             // TODO Add some fancy pancy icons (how to use the ::before pseudoclass here?!?)
             $("div.header-user").prepend("<a id='toggle-stats' class='header-btn squad-enabled'>" +
-                "<span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span>" +
                 "<span class='header-btn-text'>Stats</span></a>");
             $("div.header-user").prepend("<a id='toggle-pics' class='header-btn squad-enabled'>" +
-                "<span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'>" +
                 "</span><span class='header-btn-text'>Pics</span></a>");
             $("div.header-user").prepend("<a id='toggle-fields' class='header-btn squad-enabled'>" +
-                "<span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span>" +
                 "<span class='header-btn-text'>Fields</span></a>");
+            $("div.header-user").prepend("<a id='group-stats' class='header-btn header-boards'>" +
+                "<span class='header-btn-icon icon-lg icon-organization light'></span>" +
+                "<span class='header-btn-text'>Group Overview</span></a>");
 
             // TODO Refactor to separate functions for readability and testability
 
@@ -325,6 +336,90 @@ const tsqd = (function (factory) {
                 $("div.badges").slideToggle("fast");
                 $(this).toggleClass("squad-enabled squad-disabled");
             });
+
+            $("a#group-stats").click(function () {
+                if ($("div.group-stats").is(":visible")) {
+                    $("div.group-stats").slideUp(400);
+                } else {
+                    self.showGroupStats();
+                }
+            });
+        },
+
+        /**
+         * 
+         */
+        showGroupStats() {
+            let jGraphArea;
+            let jStatWindow = $("div.group-stats");
+            let jContent = $("div.window-overlay");
+
+            if (jStatWindow.length === 0) {
+                // let jSurface = $("div#surface");
+                // jSurface.append("<div id='modal-overlay'></div>");
+                // let jContent = $("div#board");
+                jContent.append(
+                    "<div class='group-stats'>" +
+                    "<div class='group-stats-heading'>" +
+                    "<span>Group Overview</span>" +
+                    "<a id='close-group-stats' class='header-btn squad-disabled'>" +
+                    "<span style='visibility: hidden;' class='header-btn-icon icon-lg icon-organization light'></span>" +
+                    "<span class='header-btn-text'>Close</span>" +
+                    "</a></div>" +
+                    "<div id='group-stats-content'></div>" +
+                    "</div>");
+                jStatWindow = $("div.group-stats");
+            }
+
+            $("a#close-group-stats").click(function () {
+                if ($("div.group-stats").is(":visible")) {
+                    // $("div.window-overlay").hide(0);
+                    jContent.removeClass("window-up");
+                    $("body").removeClass("window-up");
+                    $("div.group-stats").slideUp(400);
+                }
+            });
+
+            jGraphArea = $("div#group-stats-content");
+            jGraphArea.empty();
+
+            let fields = self.getFields("", ["*", config.constraintsListName]);
+
+            self.drawRoleDistribution(jGraphArea, self.getTeamLists(), {
+                width: "25vw",
+                height: "70vh",
+                class: "big-graph",
+                legend: {
+                    display: true,
+                    fontSize: 18,
+                    boxWidth: 40,
+                    position: "top",
+
+                },
+                animations: 1000,
+                title: {
+                    fontSize: 14,
+                    padding: 20,
+                },
+            });
+
+            for (let f in fields) {
+                self.drawGraph(jGraphArea, f, fields[f], {
+                    width: "25vw",
+                    height: "23vh",
+                    class: "big-graph",
+                    legend: false,
+                    animations: 1000,
+                    title: {
+                        fontSize: 14,
+                        padding: 20,
+                    },
+                });
+            }
+
+            $("body").addClass("window-up");
+            jContent.addClass("window-up");
+            jStatWindow.slideDown(400);
         },
 
         /**
@@ -468,7 +563,7 @@ const tsqd = (function (factory) {
             teamRoles = tdom.countLabelsInList(listEl);
             teamSize = self.countTeamMembers(listEl);
             violations = self.isConstraintsMet(teamSize, teamRoles);
-            fields = self.getFields(listEl);
+            fields = self.getFields(tdom.getListName(listEl));
             teamConfidence = self.getTeamConfidence(fields["Confidence"]);
 
             statusEl.css("background-color", config.validTeamColor);
@@ -645,36 +740,45 @@ const tsqd = (function (factory) {
          * }
          * ```
          *
-         * @param {Element} listEl The list to get fields for
+         * @param {String} name Name of lists to get fields for
+         * @param {Array} filter Optional filter with lists to exclude, e.g. `['*','Constraints']`
          * @returns {Object} An associative array as described above
          */
-        getFields(listEl) {
-            if (!listEl) {
-                throw new TypeError("Argument 'listEl' not defined");
+        getFields(name, filter) {
+            let jLists = tdom.getLists(name, filter);
+            let fields = [];
+
+            for (let i = 0; i < jLists.length; ++i) {
+                $(jLists[i]).find("div.list-card-details").each(function () {
+                    fields = self.getCardFields(this, fields);
+                });
             }
 
-            let fields = [];
-            $(listEl).find("div.list-card-details").each(function () {
-                // TODO Improve this: should only count team members - compare with "countTeamMembers" above
-                let labels = tdom.getCardLabels(this);
-                if (labels.length === 0) {
-                    return;
+            return fields;
+        },
+
+        /**
+         * 
+         */
+        getCardFields(cardEl, fields) {
+            let labels = tdom.getCardLabels(cardEl);
+            if (labels.length === 0) {
+                return fields;
+            }
+            let cardFields = tdom.getCardFields(cardEl);
+            for (let f in cardFields) {
+                if (fields[f] === undefined) {
+                    fields[f] = [];
                 }
-                let cardFields = tdom.getCardFields(this);
-                for (let f in cardFields) {
-                    if (fields[f] === undefined) {
-                        fields[f] = [];
-                    }
-                    let fVal = cardFields[f];
-                    if (fields[f][fVal] === undefined) {
-                        fields[f][fVal] = [];
-                    }
-                    if (fields[f][fVal][labels[0]] === undefined) {
-                        fields[f][fVal][labels[0]] = 0;
-                    }
-                    fields[f][fVal][labels[0]]++;
+                let fVal = cardFields[f];
+                if (fields[f][fVal] === undefined) {
+                    fields[f][fVal] = [];
                 }
-            });
+                if (fields[f][fVal][labels[0]] === undefined) {
+                    fields[f][fVal][labels[0]] = 0;
+                }
+                fields[f][fVal][labels[0]]++;
+            }
             return fields;
         },
 
@@ -713,7 +817,18 @@ const tsqd = (function (factory) {
                 jArea = $(listHeader).find("div.graph-area");
             }
 
-            self.drawRoleDistribution(jArea, listEl);
+            self.drawRoleDistribution(jArea, $(listEl), {
+                width: "100%",
+                height: "96px",
+                class: "list-graph",
+                legend: {
+                    display: false,
+                    fontSize: 12,
+                    boxWidth: 20,
+                    position: "left",
+                },
+                animations: 0,
+            });
 
             for (let f in fields) {
                 if (f === "Confidence") {
@@ -727,8 +842,8 @@ const tsqd = (function (factory) {
         /**
          *
          */
-        drawRoleDistribution(jArea, listEl) {
-            let labels = tdom.countListLabels(listEl, ["*", "concern"]);
+        drawRoleDistribution(jArea, jLists, graphLayout) {
+            let labels = tdom.countListLabels(jLists, ["*", "concern"]);
             let graphLabels = self.sortKeys(labels);
             let chartLabels = [];
             let chart;
@@ -739,12 +854,27 @@ const tsqd = (function (factory) {
 
             for (let i = 0; i < graphLabels.length; ++i) {
                 graphData.data.push(labels[graphLabels[i]]);
-                chartLabels.push(labels[graphLabels[i]]);
+                if (!graphLayout) {
+                    chartLabels.push(labels[graphLabels[i]]);
+                } else {
+                    chartLabels.push(graphLabels[i]);
+                }
                 graphData.backgroundColor.push(labelColors[graphLabels[i]]);
             }
 
             if (jArea.find("#graphdist").length === 0) {
-                jArea.append(`<canvas id='graphdist' width='100%' height='${config.graphHeight}px'></canvas>`);
+                let layout;
+
+                if (!graphLayout) {
+                    layout = config.graphLayout;
+                } else {
+                    layout = graphLayout;
+                }
+
+                jArea.append(`<div class='${layout.class}' ` +
+                    `style='position: relative; width: ${layout.width} !important; height: ${layout.height} !important;'>` +
+                    `<canvas id='graphdist'></canvas></div>`);
+
                 let ctx = jArea.find("#graphdist")[0];
                 ctx.style.backgroundColor = "rgba(255,255,255,0.25)";
 
@@ -756,12 +886,21 @@ const tsqd = (function (factory) {
                             datasets: [graphData],
                         },
                         options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
                             legend: {
-                                position: "left",
-                                display: true,
+                                position: layout.legend.position,
+                                display: layout.legend.display,
                                 labels: {
-                                    boxWidth: 20,
+                                    fontSize: layout.legend.fontSize,
+                                    boxWidth: layout.legend.boxWidth,
                                 },
+                            },
+                            title: {
+                                display: layout.title !== undefined,
+                                text: "Role Distribution",
+                                fontSize: layout.title ? layout.title.fontSize : 0,
+                                padding: layout.title ? layout.title.padding : 0,
                             },
                             tooltips: {
                                 enabled: true,
@@ -788,7 +927,7 @@ const tsqd = (function (factory) {
         /**
          *
          */
-        drawGraph(jArea, name, values) {
+        drawGraph(jArea, name, values, graphLayout) {
             if (!jArea) {
                 throw new TypeError("Parameter [jArea] not defined");
             }
@@ -798,6 +937,7 @@ const tsqd = (function (factory) {
             if (!values) {
                 throw new TypeError("Parameter [values] not defined");
             }
+
             let graphData = [];
             let labels = self.extractLabels(values);
             let chart;
@@ -815,11 +955,21 @@ const tsqd = (function (factory) {
                 });
             }
 
+            let layout;
+
+            if (!graphLayout) {
+                layout = config.graphLayout;
+            } else {
+                layout = graphLayout;
+            }
+
             let graphId = `#graph${name}`;
             if (jArea.find(graphId).length === 0) {
-                jArea.append(`<canvas id='graph${name}' width='100%' height='${config.graphHeight}px'></canvas>`);
+                jArea.append(`<div class='${layout.class}' ` +
+                    `style='position: relative; width: ${layout.width} !important; height: ${layout.height} !important;'>` +
+                    `<canvas id='graph${name}'></canvas></div>`);
                 let ctx = jArea.find(graphId)[0];
-                ctx.style.backgroundColor = 'rgba(255,255,255,0.25)';
+                ctx.style.backgroundColor = 'rgba(255,255,255,0.0)';
                 if (!ctx) {
                     throw new ReferenceError(`Canvas for '${graphId}' not found`);
                 }
@@ -831,8 +981,17 @@ const tsqd = (function (factory) {
                             datasets: graphData,
                         },
                         options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
                             legend: {
-                                display: false,
+                                display: layout.legend.display,
+                                position: "bottom",
+                            },
+                            title: {
+                                display: layout.title !== undefined,
+                                text: name,
+                                fontSize: layout.title ? layout.title.fontSize : 0,
+                                padding: layout.title ? layout.title.padding : 0,
                             },
                             scales: {
                                 xAxes: [{
@@ -846,7 +1005,7 @@ const tsqd = (function (factory) {
                                 }],
                             },
                             animation: {
-                                duration: 0,
+                                duration: layout.animations,
                             },
                         },
                     });
@@ -860,7 +1019,7 @@ const tsqd = (function (factory) {
                     labels: graphLabels,
                     datasets: graphData,
                 };
-                chart.options.animation.duration = 1000;
+                chart.options.animation.duration = layout.animations;
                 chart.update();
             }
         },
@@ -868,7 +1027,7 @@ const tsqd = (function (factory) {
         /**
          *
          */
-        drawConfidence(jArea, name, values) {
+        drawConfidence(jArea, name, values, graphLayout) {
             let graphData = [];
 
             let labels = self.extractLabels(values);
@@ -901,7 +1060,19 @@ const tsqd = (function (factory) {
 
             let graphId = `#graph${name}`;
             if (jArea.find(graphId).length === 0) {
-                jArea.append(`<canvas id='graph${name}' width='100%' height='${config.graphHeight}px'></canvas>`);
+                let size;
+
+                if (!graphLayout) {
+                    size = config.graphLayout;
+                } else {
+                    size = graphLayout;
+                }
+
+                jArea.append(`<div class='canvas-box' ` +
+                    // `width='${size.width}' height='${size.height}' ` +
+                    `style='position: relative; width: ${size.width} !important; height: ${size.height} !important;'>` +
+                    `<canvas id='graph${name}'></canvas></div>`);
+
                 let ctx = jArea.find(graphId)[0];
                 ctx.style.backgroundColor = 'rgba(255,255,255,0.25)';
                 if (!ctx) {
@@ -909,12 +1080,15 @@ const tsqd = (function (factory) {
                 }
                 try {
                     chart = new Chart(ctx, {
+                        responsive: true,
                         type: 'line',
                         data: {
                             labels: ["1", "2", "3", "4", "5"],
                             datasets: graphData,
                         },
                         options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
                             legend: {
                                 display: false,
                             },
