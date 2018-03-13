@@ -22,14 +22,14 @@ requirejs.config({
 
 
 describe('tdom', function() {
-    
+
     const jsdom = require("jsdom");
     const { JSDOM } = jsdom;
     // var window;
     // var $;
     // var tdom;
     // const $ = require("jquery");
-    
+
     before(function() {
         return JSDOM.fromFile("test/squadification-board.html").then((dom) => {
             global.window = dom.window;
@@ -37,7 +37,7 @@ describe('tdom', function() {
             global.tdom = requirejs("tdom");
         });
     });
-    
+
     describe("dom", function() {
         it("should have a list called 'List Alpha'", function() {
             var jName = $.find("h2.js-list-name-assist:contains('List Alpha')");
@@ -50,7 +50,7 @@ describe('tdom', function() {
 
         it("should not be undefined", function() {
             expect(tdom).to.exist;
-        })
+        });
 
     });
 
@@ -58,64 +58,63 @@ describe('tdom', function() {
 
         it("should throw an error when no parameter given", function() {
             expect(tdom.getListName).to.throw(TypeError);
-        })
+        });
         it("should return 'List Alpha' when called with first js-list DIV", function() {
             var jList = $("div.list")[0];
             expect(tdom.getListName(jList)).to.equal("List Alpha");
-        })
+        });
 
     });
 
     describe("getCardsByName()", function() {
-        
+
         it("should throw an error when no cards found", function() {
             // expect(() => tdom.getCardsByName("No card")).to.throw(RangeError);
             expect(tdom.getCardsByName("No card")).to.be.null;
-        })
+        });
         it("should throw an error when no parameter given", function() {
             expect(tdom.getCardsByName).to.throw(TypeError);
-        })
+        });
         it("should return a jQuery object with length 2 with argument 'Twins'", function() {
             expect(tdom.getCardsByName("Twins")).to.have.lengthOf(2);
-        })
+        });
         it("should return a jQuery object with length 1 with argument 'Card A1'", function() {
             expect(tdom.getCardsByName("Card A1")).to.have.lengthOf(1);
-        })
+        });
         it("should return null with argument 'Card A'", function() {
             expect(tdom.getCardsByName("Card A")).to.be.null;
-        })
+        });
         it("should return DOM elements of type 'a.list-card'", function() {
             var jCards = tdom.getCardsByName("Card A1");
             expect(jCards[0].tagName).to.equal("A");
             expect(jCards[0].classList.contains("list-card")).to.be.true;
-        })
-
+        });
     });
 
-    
+
     describe("countListLabels()", function() {
 
         it("should throw an error if no parameter", function() {
             expect(tdom.countListLabels).to.throw(TypeError);
         })
-        it("should return an array with length 4 for 'List Alpha'", function() {
-            let listEl = $("div.list")[0];
-            let labels = tdom.countListLabels(listEl);
-            expect(Object.keys(labels)).to.have.lengthOf(4);
+        it("should return an array with length 6 without a filter'", function() {
+            let jLists = $("div.list");
+            let labels = tdom.countListLabels(jLists);
+            expect(Object.keys(labels)).to.have.lengthOf(6);
             expect(labels["Label A"]).to.equal(2);
             expect(labels["Label B"]).to.equal(1);
         })
-        it("should return an array with length 3 with filter 'C' for 'List Alpha'", function() {
-            let listEl = $("div.list")[0];
-            let labels = tdom.countListLabels(listEl, ["C"]);
-            expect(Object.keys(labels)).to.have.lengthOf(3);  
+        it("should return an array with length 5 with filter 'C' for 'List Alpha'", function() {
+            let jLists = $("div.list");
+            let labels = tdom.countListLabels(jLists, ["C"]);
+            expect(Object.keys(labels)).to.have.lengthOf(5);
         })
 
     });
 
     describe("getLists()", function() {
         it("should return a jQuery object with length 4 without parameters", function() {
-            jLists = tdom.getLists();
+            let jLists = tdom.getLists();
             expect(jLists).to.be.instanceOf($);
             expect(jLists).to.have.lengthOf(4);
         })
@@ -144,9 +143,14 @@ describe('tdom', function() {
     });
 
     describe("getCardFields()", function() {
-        it("...")
+        it("should return Field1 => F1.Option1 for Card C1", function() {
+            let jCard = tdom.getCardsByName("Card C1");
+            expect(jCard).to.be.an("object").with.lengthOf(1);
+            let fields = tdom.getCardFields(jCard[0]);
+            expect(fields).to.be.an("array").with.property("Field1", "F1.Option1");
+        });
     });
-    
+
     describe("countLabelsInList()", function() {
         it("...")
     });

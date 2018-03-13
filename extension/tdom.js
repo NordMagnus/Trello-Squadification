@@ -87,13 +87,13 @@ const tdom = (function (factory) {
         /**
          * Get a count for all labels used in a list.
          *
-         * @param {Element} el
+         * @param {jQuery} jLists Lists to count labels in
          * @param {Array} filter An array with strings. Labels will be excluded if they contain any of the strings
          * @returns {Array} An associative array with labels and their respective count
          */
         countListLabels(jLists, filter) {
             if (!jLists) {
-                throw new TypeError("Parameter [el] not defined");
+                throw new TypeError("Parameter [jLists] not defined");
             }
             if (filter && !(filter instanceof Array)) {
                 throw new TypeError("Parameter [filter] undefined or not of type Array");

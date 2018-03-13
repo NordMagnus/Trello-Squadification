@@ -13,6 +13,7 @@
     return class Chart {
         constructor(context, info) {
             this.context = context;
+            this.type = info.type;
             this.data = info.data;
             this.options = info.options;
         }
@@ -21,7 +22,7 @@
          * 
          */
         update() {
-
+            
         }
 
     }

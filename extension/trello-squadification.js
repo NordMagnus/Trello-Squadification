@@ -29,10 +29,12 @@ const tsqd = (function (factory) {
             width: "100%",
             height: "96px",
             class: "list-graph",
+            type: "bar",
             legend: {
                 display: false,
                 fontSize: 12,
-                boxWidth: 20,
+                boxWidth: 10,
+                position: "bottom",
             },
             animations: 0,
         },
@@ -152,7 +154,7 @@ const tsqd = (function (factory) {
                 console.info("Setting up board");
             }
 
-            labelColors = tdom.getLabelColors();
+            self.extractLabelColors();
 
             self.addConstraintsObserver(jCanvas);
 
@@ -168,6 +170,13 @@ const tsqd = (function (factory) {
             self.parseConstraints(jList);
             self.beautifyConstraintsList(jList);
             self.checkAllTeams(jCanvas);
+        },
+
+        /**
+         * 
+         */
+        extractLabelColors() {
+            labelColors = tdom.getLabelColors();
         },
 
         /**
@@ -385,28 +394,33 @@ const tsqd = (function (factory) {
 
             let fields = self.getFields("", ["*", config.constraintsListName]);
 
-            self.drawRoleDistribution(jGraphArea, self.getTeamLists(), {
+            let layout = {
+                type: "doughnut",
                 width: "25vw",
                 height: "70vh",
                 class: "big-graph",
                 legend: {
                     display: true,
-                    fontSize: 18,
-                    boxWidth: 40,
+                    labels: {
+                        fontSize: 18,
+                        boxWidth: 40,
+                    },
                     position: "top",
-
                 },
                 animations: 1000,
                 title: {
                     fontSize: 14,
                     padding: 20,
                 },
-            });
+            };
+
+            let chartInfo = self.generateRoleDistribution(self.getTeamLists(), false, layout);
+            self.drawGraph(jGraphArea, chartInfo);
 
             for (let f in fields) {
-                self.drawGraph(jGraphArea, f, fields[f], {
+                let chartInfo = self.generateFieldGraphData(f, fields[f], {
                     width: "25vw",
-                    height: "23vh",
+                    height: "22vh",
                     class: "big-graph",
                     legend: false,
                     animations: 1000,
@@ -415,6 +429,7 @@ const tsqd = (function (factory) {
                         padding: 20,
                     },
                 });
+                self.drawGraph(jGraphArea, chartInfo);
             }
 
             $("body").addClass("window-up");
@@ -451,9 +466,6 @@ const tsqd = (function (factory) {
                 } else {
                     teamMinSize = parseInt(text.substring(text.indexOf(">") + 1));
                 }
-                if (config.debug) {
-                    console.log(`Minimum team size (-1): ${teamMinSize}`);
-                }
             } else {
                 teamMinSize = undefined;
             }
@@ -472,9 +484,6 @@ const tsqd = (function (factory) {
                 } else {
                     teamMaxSize = parseInt(text.substring(text.indexOf("<") + 1));
                 }
-                if (config.debug) {
-                    console.log(`Maximum team size (+1): ${teamMaxSize}`);
-                }
             } else {
                 teamMaxSize = undefined;
             }
@@ -492,9 +501,6 @@ const tsqd = (function (factory) {
                     minConfidence -= 1;
                 } else {
                     minConfidence = parseInt(text.substring(text.indexOf(">") + 1));
-                }
-                if (config.debug) {
-                    console.log(`Minimum confidence (-1): ${minConfidence}`);
                 }
             } else {
                 minConfidence = undefined;
@@ -743,6 +749,7 @@ const tsqd = (function (factory) {
          * @param {String} name Name of lists to get fields for
          * @param {Array} filter Optional filter with lists to exclude, e.g. `['*','Constraints']`
          * @returns {Object} An associative array as described above
+         * @see getCardFields 
          */
         getFields(name, filter) {
             let jLists = tdom.getLists(name, filter);
@@ -760,7 +767,11 @@ const tsqd = (function (factory) {
         /**
          * 
          */
-        getCardFields(cardEl, fields) {
+        getCardFields(cardEl, fields = []) {
+            if (!cardEl) {
+                throw new TypeError("Parameter [cardEl] missing");
+            }
+
             let labels = tdom.getCardLabels(cardEl);
             if (labels.length === 0) {
                 return fields;
@@ -807,6 +818,9 @@ const tsqd = (function (factory) {
                 throw new TypeError("Parameter 'fields' undefined");
             }
 
+            /*
+             * Create the graph area if it does not exist
+             */
             let jArea = $(listEl).find("div.graph-area");
             if (jArea.length === 0) {
                 let listHeader = $(listEl).find("div.list-header");
@@ -817,228 +831,107 @@ const tsqd = (function (factory) {
                 jArea = $(listHeader).find("div.graph-area");
             }
 
-            self.drawRoleDistribution(jArea, $(listEl), {
-                width: "100%",
-                height: "96px",
-                class: "list-graph",
-                legend: {
-                    display: false,
-                    fontSize: 12,
-                    boxWidth: 20,
-                    position: "left",
-                },
-                animations: 0,
-            });
+            let chartInfo = self.generateRoleDistribution($(listEl));
+            self.drawGraph(jArea, chartInfo);
 
             for (let f in fields) {
+                let chartInfo;
                 if (f === "Confidence") {
-                    self.drawConfidence(jArea, f, fields[f]);
+                    chartInfo = self.generateConfidenceData(fields[f]);
                 } else {
-                    self.drawGraph(jArea, f, fields[f]);
+                    chartInfo = self.generateFieldGraphData(f, fields[f]);
                 }
+                self.drawGraph(jArea, chartInfo);
             }
         },
 
         /**
-         *
+         * 
          */
-        drawRoleDistribution(jArea, jLists, graphLayout) {
-            let labels = tdom.countListLabels(jLists, ["*", "concern"]);
-            let graphLabels = self.sortKeys(labels);
+        generateRoleDistribution(jLists, showCountAsLabel = true, layout) {
+            let badges = tdom.countListLabels(jLists, ["*", "concern"]);
+            let labels = self.sortKeys(badges);
             let chartLabels = [];
-            let chart;
             let graphData = {
                 backgroundColor: [],
                 data: [],
             };
 
-            for (let i = 0; i < graphLabels.length; ++i) {
-                graphData.data.push(labels[graphLabels[i]]);
-                if (!graphLayout) {
-                    chartLabels.push(labels[graphLabels[i]]);
+            for (let i = 0; i < labels.length; ++i) {
+                graphData.data.push(badges[labels[i]]);
+                if (showCountAsLabel) {
+                    chartLabels.push(badges[labels[i]]);
                 } else {
-                    chartLabels.push(graphLabels[i]);
+                    chartLabels.push(labels[i]);
                 }
-                graphData.backgroundColor.push(labelColors[graphLabels[i]]);
+                graphData.backgroundColor.push(labelColors[labels[i]]);
             }
 
-            if (jArea.find("#graphdist").length === 0) {
-                let layout;
-
-                if (!graphLayout) {
-                    layout = config.graphLayout;
-                } else {
-                    layout = graphLayout;
-                }
-
-                jArea.append(`<div class='${layout.class}' ` +
-                    `style='position: relative; width: ${layout.width} !important; height: ${layout.height} !important;'>` +
-                    `<canvas id='graphdist'></canvas></div>`);
-
-                let ctx = jArea.find("#graphdist")[0];
-                ctx.style.backgroundColor = "rgba(255,255,255,0.25)";
-
-                try {
-                    chart = new Chart(ctx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: chartLabels,
-                            datasets: [graphData],
+            let chartInfo = {
+                name: "dist",
+                labels: chartLabels,
+                data: [graphData],
+                layout: layout || {
+                    type: "doughnut",
+                    width: "100%",
+                    height: "96px",
+                    class: "list-graph",
+                    legend: {
+                        display: true,
+                        labels: {
+                            fontSize: 12,
+                            boxWidth: 15,
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            legend: {
-                                position: layout.legend.position,
-                                display: layout.legend.display,
-                                labels: {
-                                    fontSize: layout.legend.fontSize,
-                                    boxWidth: layout.legend.boxWidth,
-                                },
-                            },
-                            title: {
-                                display: layout.title !== undefined,
-                                text: "Role Distribution",
-                                fontSize: layout.title ? layout.title.fontSize : 0,
-                                padding: layout.title ? layout.title.padding : 0,
-                            },
-                            tooltips: {
-                                enabled: true,
-                            },
-                            animation: {
-                                duration: 0,
-                            },
-                        },
-                    });
-                    jArea.data("graphdist", chart);
-                } catch (e) {
-                    console.error(e);
-                }
-            } else {
-                chart = jArea.data("graphdist");
-                chart.data = {
-                    labels: chartLabels,
-                    datasets: [graphData],
-                };
-                chart.update();
-            }
+                        position: "left",
+                    },
+                    animations: 0,
+                },
+            };
+
+            return chartInfo;
         },
 
         /**
-         *
+         * 
          */
-        drawGraph(jArea, name, values, graphLayout) {
-            if (!jArea) {
-                throw new TypeError("Parameter [jArea] not defined");
-            }
-            if (!name) {
-                throw new TypeError("Parameter [name] not defined");
-            }
-            if (!values) {
-                throw new TypeError("Parameter [values] not defined");
-            }
+        generateFieldGraphData(name, field, layout = config.graphLayout) {
+            let data = []; // Chart data
+            let badges = self.extractLabels(field); // The labels/badges from Trello
+            let labels = self.sortKeys(field); // The labels to display in the chart
 
-            let graphData = [];
-            let labels = self.extractLabels(values);
-            let chart;
-            let graphLabels = self.sortKeys(values);
-
-            for (let i = 0; i < labels.length; ++i) {
-                let labelData = [];
-                for (let j = 0; j < graphLabels.length; ++j) {
-                    labelData.push(values[graphLabels[j]][labels[i]]);
+            for (let i = 0; i < badges.length; ++i) {
+                let badgeData = [];
+                for (let j = 0; j < labels.length; ++j) {
+                    badgeData.push(field[labels[j]][badges[i]]);
                 }
-                graphData.push({
-                    label: labels[i],
-                    data: labelData,
-                    backgroundColor: labelColors[labels[i]],
+                data.push({
+                    label: badges[i],
+                    data: badgeData,
+                    backgroundColor: labelColors[badges[i]],
                 });
             }
 
-            let layout;
+            let chartInfo = {
+                name,
+                labels,
+                data,
+                layout,
+            };
 
-            if (!graphLayout) {
-                layout = config.graphLayout;
-            } else {
-                layout = graphLayout;
-            }
-
-            let graphId = `#graph${name}`;
-            if (jArea.find(graphId).length === 0) {
-                jArea.append(`<div class='${layout.class}' ` +
-                    `style='position: relative; width: ${layout.width} !important; height: ${layout.height} !important;'>` +
-                    `<canvas id='graph${name}'></canvas></div>`);
-                let ctx = jArea.find(graphId)[0];
-                ctx.style.backgroundColor = 'rgba(255,255,255,0.0)';
-                if (!ctx) {
-                    throw new ReferenceError(`Canvas for '${graphId}' not found`);
-                }
-                try {
-                    chart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: graphLabels,
-                            datasets: graphData,
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            legend: {
-                                display: layout.legend.display,
-                                position: "bottom",
-                            },
-                            title: {
-                                display: layout.title !== undefined,
-                                text: name,
-                                fontSize: layout.title ? layout.title.fontSize : 0,
-                                padding: layout.title ? layout.title.padding : 0,
-                            },
-                            scales: {
-                                xAxes: [{
-                                    stacked: true,
-                                }],
-                                yAxes: [{
-                                    stacked: true,
-                                    ticks: {
-                                        beginAtZero: true,
-                                    },
-                                }],
-                            },
-                            animation: {
-                                duration: layout.animations,
-                            },
-                        },
-                    });
-                    jArea.data(`graph${name}`, chart);
-                } catch (e) {
-                    console.error(e);
-                }
-            } else {
-                chart = jArea.data(`graph${name}`);
-                chart.data = {
-                    labels: graphLabels,
-                    datasets: graphData,
-                };
-                chart.options.animation.duration = layout.animations;
-                chart.update();
-            }
+            return chartInfo;
         },
 
-        /**
-         *
-         */
-        drawConfidence(jArea, name, values, graphLayout) {
+        generateConfidenceData(field, layout = config.graphLayout) {
             let graphData = [];
 
-            let labels = self.extractLabels(values);
-            let chart;
+            let labels = self.extractLabels(field);
 
             for (let i = 0; i < labels.length; ++i) {
                 let labelData = [];
                 for (let j = 1; j <= 5; ++j) {
                     let data;
 
-                    data = values[j.toString()];
+                    data = field[j.toString()];
                     if (data) {
                         data = data[labels[i]];
                     }
@@ -1058,65 +951,132 @@ const tsqd = (function (factory) {
                 });
             }
 
-            let graphId = `#graph${name}`;
-            if (jArea.find(graphId).length === 0) {
-                let size;
+            let lineLayout = Object.assign({}, layout);
+            lineLayout.type = "line";
 
-                if (!graphLayout) {
-                    size = config.graphLayout;
-                } else {
-                    size = graphLayout;
-                }
+            let chartInfo = {
+                name: "Confidence",
+                labels: ["1", "2", "3", "4", "5"],
+                responsive: true,
+                type: 'line',
+                data: graphData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: {
+                        display: false,
+                    },
+                    scales: {
+                        yAxes: [{
+                            stacked: true,
+                            ticks: {
+                                beginAtZero: true,
+                                stepSize: 1,
+                            },
+                        }],
+                    },
+                    animation: {
+                        duration: 0,
+                    },
+                },
+                layout: lineLayout,
+            };
 
-                jArea.append(`<div class='canvas-box' ` +
-                    // `width='${size.width}' height='${size.height}' ` +
-                    `style='position: relative; width: ${size.width} !important; height: ${size.height} !important;'>` +
-                    `<canvas id='graph${name}'></canvas></div>`);
+            return chartInfo;
+        },
 
+        /**
+         * Draws a graph in the given area. *chartInfo* is expected to be an object with like this:
+         * ```
+         * chartInfo = {
+         *   "name": "identifier",
+         *   "labels": ["lbl1","lbl2",...],
+         *   "data": {...},
+         *   "layout": {...},
+         * }
+         * ```
+         * @param {jQuery} jArea The area where graph is added
+         * @param {Object} chartInfo Information about the graph to draw
+         */
+        drawGraph(jArea, chartInfo) {
+
+            // TODO Add labels to the donut chart
+
+            if (!jArea) {
+                throw new TypeError("Parameter [jArea] not defined");
+            }
+            if (!chartInfo) {
+                throw new TypeError("Parameter [chartInfo] not defined");
+            }
+
+            let chart;
+            let {
+                layout,
+            } = chartInfo;
+            let graphId = `#graph${chartInfo.name}`;
+
+            // ? No reason why jArea.data attribute should be undefined here (only happens when testing)
+            if (jArea.find(graphId).length === 0 || jArea.data(`graph${chartInfo.name}`) === undefined) {
+                jArea.append(`<div class='${layout.class}' ` +
+                    `style='position: relative; width: ${layout.width} !important; height: ${layout.height} !important;'>` +
+                    `<canvas id='graph${chartInfo.name}'></canvas></div>`);
                 let ctx = jArea.find(graphId)[0];
-                ctx.style.backgroundColor = 'rgba(255,255,255,0.25)';
-                if (!ctx) {
-                    console.error("Element ctx not defined");
-                }
+                ctx.style.backgroundColor = 'rgba(255,255,255,0.0)';
+
+
                 try {
                     chart = new Chart(ctx, {
-                        responsive: true,
-                        type: 'line',
+                        type: layout.type || "bar",
                         data: {
-                            labels: ["1", "2", "3", "4", "5"],
-                            datasets: graphData,
+                            labels: chartInfo.labels,
+                            datasets: chartInfo.data,
                         },
-                        options: {
+                        options: chartInfo.options || {
                             responsive: true,
                             maintainAspectRatio: false,
-                            legend: {
-                                display: false,
+                            legend: layout.legend,
+                            title: {
+                                display: layout.title !== undefined,
+                                text: chartInfo.name,
+                                fontSize: layout.title ? layout.title.fontSize : 0,
+                                padding: layout.title ? layout.title.padding : 0,
                             },
-                            scales: {
+                            scales: layout.type !== "bar" ? {
+                                "yAxes": [],
+                                "xAxes": [],
+                            } : {
+                                xAxes: [{
+                                    stacked: true,
+                                }],
                                 yAxes: [{
                                     stacked: true,
                                     ticks: {
                                         beginAtZero: true,
+                                        stepSize: 1,
                                     },
                                 }],
                             },
                             animation: {
-                                duration: 0,
+                                duration: layout.animations,
                             },
                         },
                     });
-                    jArea.data(`graph${name}`, chart);
+                    jArea.data(`graph${chartInfo.name}`, chart);
                 } catch (e) {
                     console.error(e);
                 }
             } else {
-                chart = jArea.data(`graph${name}`);
+                chart = jArea.data(`graph${chartInfo.name}`);
                 chart.data = {
-                    labels: ["1", "2", "3", "4", "5"],
-                    datasets: graphData,
+                    labels: chartInfo.labels,
+                    datasets: chartInfo.data,
                 };
+                chart.options.animation.duration = layout.animations;
                 chart.update();
             }
+
+            // HACK Used for testing - would like to spy on this instead
+            return chart;
         },
 
         /**

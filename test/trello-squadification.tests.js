@@ -1,12 +1,16 @@
-
 /*
- * requirejs, assert, mocha and jquery installed via node
+ * requirejs, assert, mocha, sinon and jquery installed via node
  */
 
 const requirejs = require('requirejs');
 const chai = require('chai');
-// const assert = chai.assert;
-const {expect} = chai;
+const sinon = require('sinon');
+const sinonChai = require('chai-sinon');
+
+const {
+    expect,
+} = chai;
+chai.use(sinonChai);
 
 requirejs.config({
     baseUrl: ".",
@@ -34,7 +38,8 @@ describe('trello-squadification', function () {
                 global.window = dom.window;
                 global.$ = require('jquery');
                 global.MutationObserver = require("mutation-observer");
-                global.Chart = requirejs("chart");
+                let MockChart = requirejs("chart");
+                global.Chart = sinon.createStubInstance(MockChart);
                 global.tdom = requirejs("tdom");
                 global.tsqd = requirejs("tsqd");
             });
@@ -57,9 +62,11 @@ describe('trello-squadification', function () {
     describe('Chart.mock.js', function () {
         it("should be a class taking two parameters", function () {
             let chart = new Chart("context", {
+                type: "test",
                 data: true,
                 options: true,
             });
+            expect(chart.type).to.equal("test");
             expect(chart.data).to.be.true;
             expect(chart.options).to.be.true;
             expect(chart.context).to.equal("context");
@@ -67,8 +74,6 @@ describe('trello-squadification', function () {
     });
 
     describe('initialize()', function () {
-
-
         it("should throw an error when there's no DIV#content tag", function () {
             // TODO How to test this? Alternate DOM?!?
             // const { NODOM } = jsdom('<!doctype html><html><body><div id="no-container"/></div></body></html>');
@@ -78,7 +83,6 @@ describe('trello-squadification', function () {
             expect(observer).to.be.instanceOf(MutationObserver);
             observer.disconnect();
         });
-
     });
 
     describe("setupBoard()", function () {
@@ -128,6 +132,22 @@ describe('trello-squadification', function () {
 
     describe("getFields()", function () {
         it("...");
+    });
+
+    describe("getCardFields()", function() {
+        /*
+         * [ Field1: [ 'F1.Option1': [ 'Label A': 1 ] ] ]
+         */
+        it("should return F1.Option1 for Card C1", function() {
+            let jCard = tdom.getCardsByName("Card C1");
+            let labels = tdom.getCardLabels(jCard[0]);
+            expect(labels).to.be.an("array").with.lengthOf(1);
+            expect(labels[0]).to.equal("Label A");
+            let fields = tsqd.getCardFields(jCard[0]);
+            expect(fields).to.be.an("array").with.property("Field1");
+            expect(fields.Field1).to.be.an("array").with.property("F1.Option1");
+            expect(fields.Field1["F1.Option1"]).to.be.an("array").with.property("Label A", 1);
+        });
     });
 
     describe("isConstraintsMet()", function () {
@@ -239,20 +259,141 @@ describe('trello-squadification', function () {
     });
 
     describe("drawTeamGraphs()", function () {
+        before(function () {
+            sinon.spy(tsqd, "generateRoleDistribution");
+        });
+        after(function () {
+            tsqd.generateRoleDistribution.restore();
+        });
+
         it("should throw error if any parameter is missing", function () {
-            let listEl = tsqd.getTeamLists()[0];
+            let jLists = tsqd.getTeamLists();
             expect(tsqd.drawTeamGraphs).to.throw(TypeError);
             expect(function () {
-                tsqd.drawTeamGraphs(listEl);
+                tsqd.drawTeamGraphs(jLists);
             }).to.throw(TypeError);
             expect(function () {
                 tsqd.drawTeamGraphs(undefined, true);
             }).to.throw(TypeError);
         });
+        it("should add a div.graph-area element to the DOM", function () {
+            let jlists = tsqd.getTeamLists();
+            tsqd.drawTeamGraphs(jlists[0], []);
+            let jArea = $("div.graph-area");
+            expect(jArea).to.have.length.greaterThan(0);
+            expect(jArea.length).to.equal(jlists.length);
+
+        });
+        it("should call generateRoleDistribution() once", function () {
+            let jLists = tsqd.getTeamLists();
+            tsqd.extractLabelColors();
+            tsqd.drawTeamGraphs(jLists[0], []);
+            expect(tsqd.generateRoleDistribution).to.have.been.called;
+        });
     });
 
-    describe("drawRoleDistribution()", function () {
-        it("...");
+    describe("generateFieldGraphData()", function() {
+        /*
+         * {
+         *   "Field 1": {
+         *     "Value A": {
+         *       "Label X": 3,
+         *       "Label Y": 2
+         *     },
+         *     "Value B": {
+         *       "Label X": 1,
+         *       "Label Y": 0
+         *     }
+         *   },
+         *   "Field 2": {
+         *     ...
+         *   }
+         * }
+         */
+        it("should generate Chart.js datasets for stacked bar graphs", function() {
+            let field = {
+                "Opt1": {
+                    "Lbl1": 1,
+                    "Lbl2": 1,
+                },
+            };
+            tsqd.extractLabelColors();
+
+            let chartInfo = tsqd.generateFieldGraphData("name", field);
+
+            expect(chartInfo).to.be.an("object").with.property("data");
+
+            let {data} = chartInfo;
+
+            expect(data).to.be.an("array").with.lengthOf(2); // One dataset per label
+            expect(data[0]).to.be.an("object").with.property("label", "Lbl1");
+            expect(data[1]).to.be.an("object").with.property("label", "Lbl2");
+            expect(data[0]).to.have.property("backgroundColor");
+            expect(data[0].data).to.eql([1]); // Deep equal here
+        });
+    });
+
+    describe("generateConfidenceData()", function() {
+        it("should generate Chart.js datasets for a stacked line graph", function() {
+            let field = {
+                "1": {
+                    "Label A": 1,
+                    "Label B": 1,
+                },
+                "5": {
+                    "Label A": 1,
+                    "Label B": 2,
+                },
+            };
+            tsqd.extractLabelColors();
+            let chartInfo = tsqd.generateConfidenceData(field);
+
+            expect(chartInfo).to.be.an("object").with.property("data");
+
+            let {data} = chartInfo;
+
+            expect(data).to.be.an("array").with.lengthOf(2);
+        });
+    });
+
+    describe("drawGraph()", function () {
+        // let Chart = sinon.spy();
+        let chartInfo;
+        let jList;
+        let jArea;
+
+        before(function () {
+            jList = tdom.getLists("List Alpha");
+            jArea = jList.find("div.graph-area");
+            chartInfo = {
+                name: "test",
+                labels: ["label1", "label2", "label3"],
+                data: {
+
+                },
+                layout: {
+                    width: "100%",
+                    height: "96px",
+                    class: "list-graph",
+                    type: "bar",
+                    legend: {
+                        display: false,
+                        fontSize: 12,
+                        boxWidth: 20,
+                    },
+                    animations: 0,
+                },
+            };
+        });
+        after(function () {
+
+        });
+
+        it("should call Chart with type=bar if no type specified", function () {
+            let chart = tsqd.drawGraph(jArea, chartInfo);
+            expect(chart.type).to.equal("bar");
+        });
+
     });
 
     describe("getTeamConfidence()", function () {
@@ -274,5 +415,24 @@ describe('trello-squadification', function () {
             expect(tsqd.getTeamConfidence(values)).to.be.NaN;
         });
 
+    });
+
+    describe("showGroupStats()", function() {
+        before(function() {
+            sinon.spy(tsqd, "generateFieldGraphData");
+            sinon.spy(tsqd, "generateRoleDistribution");
+            sinon.spy(tsqd, "drawGraph");
+        });
+        after(function() {
+            tsqd.generateFieldGraphData.restore();
+            tsqd.generateRoleDistribution.restore();
+            tsqd.drawGraph.restore();
+        });
+
+        it("should call generate and draw graph functions", function() {
+            expect(tsqd.generateFieldGraphData).to.have.been.called;
+            expect(tsqd.generateRoleDistribution).to.have.been.called;
+            expect(tsqd.drawGraph).to.have.been.called;
+        });
     });
 });
