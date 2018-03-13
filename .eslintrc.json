@@ -15,8 +15,8 @@
     "rules": {
         "no-const-assign": "warn",
         "no-this-before-super": "warn",
-        "no-undef": "warn",
-        "no-unreachable": "warn",
+        "no-undef": "error",
+        "no-unreachable": "error",
         "no-unused-vars": "warn",
         "constructor-super": "warn",
         "valid-typeof": "warn",
@@ -32,20 +32,14 @@
         "max-depth": ["warn", 4],
         "no-multiple-empty-lines": "warn",
         "no-trailing-spaces": "warn",
-        "Require-jsdoc": ["warn", {
-            "require": {
-                "FunctionDeclaration": true,
-                "MethodDefinition": true
-            }
-        }],
         "no-var": "warn",
         "prefer-destructuring": ["warn", {"object": true, "array": false}],
         "prefer-template": "warn",
         "no-useless-concat": "warn",
 
         "prefer-const": "off",
-        "max-statements": ["off", 20, { "ignoreTopLevelFunctions": true }],
-        "complexity": ["off", 5],
+        "max-statements": ["warn", 20, { "ignoreTopLevelFunctions": true }],
+        "complexity": ["off", 8],
         "no-magic-numbers": ["off"]
         
     },
@@ -56,10 +50,12 @@
         "tdom": true,
         "Chart": false,
         "tsqd": false,
-        "describe": false,
-        "it": false,
-        "before": false,
-        "beforeEach": false
+        "describe": true,
+        "it": true,
+        "before": true,
+        "beforeEach": true,
+        "after": true,
+        "afterEach": true
     }
 
 }
