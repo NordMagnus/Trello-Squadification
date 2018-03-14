@@ -1053,7 +1053,7 @@ const tsqd = (function (factory) {
                                     ticks: {
                                         beginAtZero: true,
                                         min: 0,
-                                        callback: function (value, index, values) {
+                                        callback: function (value) {
                                             if (Math.floor(value) === value) {
                                                 return value;
                                             }
