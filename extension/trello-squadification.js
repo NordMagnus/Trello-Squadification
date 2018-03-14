@@ -1052,7 +1052,12 @@ const tsqd = (function (factory) {
                                     stacked: true,
                                     ticks: {
                                         beginAtZero: true,
-                                        stepSize: 1,
+                                        min: 0,
+                                        callback: function (value, index, values) {
+                                            if (Math.floor(value) === value) {
+                                                return value;
+                                            }
+                                        },
                                     },
                                 }],
                             },
