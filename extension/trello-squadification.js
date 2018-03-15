@@ -46,6 +46,10 @@ const tsqd = (function (factory) {
 
     const self = {
 
+        get config() {
+            return config;
+        },
+
         set maxSize(size) {
             teamMaxSize = size;
         },
