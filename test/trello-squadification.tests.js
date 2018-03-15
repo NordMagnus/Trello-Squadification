@@ -131,7 +131,18 @@ describe('trello-squadification', function () {
     });
 
     describe("getFields()", function () {
-        it("...");
+        it("should return two fields for 'List Alpha'", function() {
+            let fields = tsqd.getFields("List Alpha");
+            expect(fields).to.be.an("array").with.property("Field1");
+            expect(fields).to.be.an("array").with.property("Field2");
+            expect(Object.keys(fields)).to.have.lengthOf(2);
+        });
+        it("should return two fields for '' and filter ['*','Squadification Constraints']", function() {
+            let fields = tsqd.getFields("", ["*", "Squadification Constraints"]);
+            expect(fields).to.be.an("array").with.property("Field1");
+            expect(fields).to.be.an("array").with.property("Field2");
+            expect(Object.keys(fields)).to.have.lengthOf(2);
+        });
     });
 
     describe("getCardFields()", function() {
@@ -430,6 +441,9 @@ describe('trello-squadification', function () {
         });
 
         it("should call generate and draw graph functions", function() {
+            // let fields = tsqd.getFields("", ["*", tsqd.config.constraintsListName]);
+            // expect(Object.keys(fields)).to.have.lengthOf(2);
+            tsqd.showGroupStats();
             expect(tsqd.generateFieldGraphData).to.have.been.called;
             expect(tsqd.generateRoleDistribution).to.have.been.called;
             expect(tsqd.drawGraph).to.have.been.called;
