@@ -9,9 +9,9 @@ module.exports = function(grunt) {
         mochaTest: {
             test: {
                 options: {
-
+                    reporter: "min",
                 },
-                src: ['test/**/*.tests.js']
+                src: ["test/**/*.tests.js"],
             },
         },
         compress: {
