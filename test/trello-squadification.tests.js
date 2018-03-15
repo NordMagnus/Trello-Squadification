@@ -130,6 +130,31 @@ describe('trello-squadification', function () {
         });
     });
 
+    describe("checkConcerns()", function() {
+        it("should return an empty array for 'List Alpha'", function() {
+            let concernList = tsqd.checkConcerns(tdom.getLists("List Alpha"));
+            expect(concernList).to.be.an("array").that.is.empty;
+        });
+        it("should return an array with 'Low confidence...' when provided a confidence < minimum confidence", function() {
+            tsqd.minimumConfidence = 3.0;
+            let concernList;
+            const jList = tdom.getLists("List Alpha");
+
+            concernList = tsqd.checkConcerns(jList, 3.5);
+            expect(concernList).to.be.an("array").with.lengthOf(1);
+            expect(concernList[0]).to.include("Low confidence");
+
+            concernList = tsqd.checkConcerns(jList, 3.9);
+            expect(concernList).to.be.an("array").with.lengthOf(1);
+
+            concernList = tsqd.checkConcerns(jList, 4.1);
+            expect(concernList).to.be.an("array").with.lengthOf(0);
+
+            concernList = tsqd.checkConcerns(jList, 4.5);
+            expect(concernList).to.be.an("array").with.lengthOf(0);
+        });
+    });
+
     describe("getFields()", function () {
         it("should return two fields for 'List Alpha'", function() {
             let fields = tsqd.getFields("List Alpha");

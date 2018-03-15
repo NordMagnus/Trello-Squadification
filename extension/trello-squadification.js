@@ -177,7 +177,7 @@ const tsqd = (function (factory) {
         },
 
         /**
-         * 
+         *
          */
         extractLabelColors() {
             labelColors = tdom.getLabelColors();
@@ -300,7 +300,6 @@ const tsqd = (function (factory) {
          *  - **Stats** to toggle graphs on and off
          */
         addHeaderIcons() {
-            // TODO Add some fancy pancy icons (how to use the ::before pseudoclass here?!?)
             $("div.header-user").prepend("<a id='toggle-stats' class='header-btn squad-enabled'>" +
                 "<span class='header-btn-text'>Stats</span></a>");
             $("div.header-user").prepend("<a id='toggle-pics' class='header-btn squad-enabled'>" +
@@ -360,7 +359,7 @@ const tsqd = (function (factory) {
         },
 
         /**
-         * 
+         *
          */
         showGroupStats() {
             let jGraphArea;
@@ -454,61 +453,40 @@ const tsqd = (function (factory) {
 
             roleConstraints = tdom.countLabelsInList(jList);
 
-            // TODO Refactor: A lot of repetitive code upinhere
+            teamMinSize = self.parseConstraintCard(jList, "size >");
+            teamMaxSize = self.parseConstraintCard(jList, "size <");
+            minConfidence = self.parseConstraintCard(jList, "confidence >");
+        },
 
-            let minSizeCard = jList.find("span.list-card-title:contains('size >')");
-            if (minSizeCard.length !== 0) {
-                let text = minSizeCard
+        /**
+         *
+         */
+        parseConstraintCard(jList, text) {
+            let constraintCard = jList.find(`span.list-card-title:contains('${text}')`);
+            let op = text.substring(text.length - 1);
+            let constraintValue;
+
+            if (constraintCard.length !== 0) {
+                let text = constraintCard
                     .clone() //clone the element
                     .children() //select all the children
                     .remove() //remove all the children
                     .end() //again go back to selected element
                     .text();
-                if (text.indexOf(">=") !== -1) {
-                    teamMinSize = parseInt(text.substring(text.indexOf(">=") + 2));
-                    teamMinSize -= 1;
+                if (text.indexOf(`${op}=`) !== -1) {
+                    constraintValue = parseInt(text.substring(text.indexOf(`${op}=`) + 2));
+                    if (op === ">") {
+                        constraintValue -= 1;
+                    } else {
+                        constraintValue += 1;
+                    }
                 } else {
-                    teamMinSize = parseInt(text.substring(text.indexOf(">") + 1));
+                    constraintValue = parseInt(text.substring(text.indexOf(op) + 1));
                 }
-            } else {
-                teamMinSize = undefined;
             }
 
-            let maxSizeCard = jList.find("span.list-card-title:contains('size <')");
-            if (maxSizeCard.length !== 0) {
-                let text = maxSizeCard
-                    .clone() //clone the element
-                    .children() //select all the children
-                    .remove() //remove all the children
-                    .end() //again go back to selected element
-                    .text();
-                if (text.indexOf("<=") !== -1) {
-                    teamMaxSize = parseInt(text.substring(text.indexOf("<=") + 2));
-                    teamMaxSize += 1;
-                } else {
-                    teamMaxSize = parseInt(text.substring(text.indexOf("<") + 1));
-                }
-            } else {
-                teamMaxSize = undefined;
-            }
+            return constraintValue;
 
-            let minConfidenceCard = jList.find("span.list-card-title:contains('confidence >')");
-            if (minConfidenceCard.length !== 0) {
-                let text = minConfidenceCard
-                    .clone() //clone the element
-                    .children() //select all the children
-                    .remove() //remove all the children
-                    .end() //again go back to selected element
-                    .text();
-                if (text.indexOf(">=") !== -1) {
-                    minConfidence = parseInt(text.substring(text.indexOf(">=") + 2));
-                    minConfidence -= 1;
-                } else {
-                    minConfidence = parseInt(text.substring(text.indexOf(">") + 1));
-                }
-            } else {
-                minConfidence = undefined;
-            }
         },
 
         /**
@@ -553,28 +531,20 @@ const tsqd = (function (factory) {
                 throw new TypeError("Argument 'listEl' not defined");
             }
 
-            let statusEl;
-            let violationsEl;
-            let teamRoles;
-            let violations;
-            let fields;
-            let teamConfidence;
-            let teamSize;
-
-            statusEl = $(listEl).find("div.list-status");
+            let statusEl = $(listEl).find("div.list-status");
             if (statusEl.length === 0) {
                 $(listEl).prepend("<div class='list-status' style='background-color: #444444;'>" +
                     "<div class='team-count'>?</div><div class='violations'></div></div>");
                 statusEl = $(listEl).find("div.list-status");
             }
 
-            violationsEl = $(listEl).find("div.violations").empty();
+            let violationsEl = $(listEl).find("div.violations").empty();
 
-            teamRoles = tdom.countLabelsInList(listEl);
-            teamSize = self.countTeamMembers(listEl);
-            violations = self.isConstraintsMet(teamSize, teamRoles);
-            fields = self.getFields(tdom.getListName(listEl));
-            teamConfidence = self.getTeamConfidence(fields["Confidence"]);
+            let teamRoles = tdom.countLabelsInList(listEl);
+            let teamSize = self.countTeamMembers(listEl);
+            let violations = self.isConstraintsMet(teamSize, teamRoles);
+            let fields = self.getFields(tdom.getListName(listEl));
+            let teamConfidence = self.getTeamConfidence(fields["Confidence"]);
 
             statusEl.css("background-color", config.validTeamColor);
 
@@ -582,24 +552,10 @@ const tsqd = (function (factory) {
                 statusEl.css("background-color", config.invalidTeamColor);
                 violationsEl.html(violations.join("<br/>"));
             } else {
-                if (teamRoles["concern"] !== undefined) {
-                    let concernCards = $(listEl).find("div.list-card-details:has(span.card-label):contains('concern')");
-                    concernCards.css("background-color", "rgba(255,128,96,0.4)");
-                    let cardTitles = concernCards.find("span.list-card-title");
-                    cardTitles.each(function () {
-                        let text = $(this)
-                            .clone() //clone the element
-                            .children() //select all the children
-                            .remove() //remove all the children
-                            .end() //again go back to selected element
-                            .text();
-                        violationsEl.append(`${text}<br/>`);
-                    });
+                let concernList = self.checkConcerns(listEl, teamConfidence);
+                if (concernList.length !== 0) {
                     statusEl.css("background-color", config.unconfidentTeamColor);
-                }
-                if (minConfidence !== undefined && teamConfidence !== undefined && teamConfidence < minConfidence + 1) {
-                    violationsEl.append(`Low confidence score (${teamConfidence.toFixed(1)})<br/>`);
-                    statusEl.css("background-color", config.unconfidentTeamColor);
+                    violationsEl.html(concernList.join("<br/>"));
                 }
             }
 
@@ -615,6 +571,43 @@ const tsqd = (function (factory) {
                 "background-color", "rgba(180,180,180,0.2)");
 
             self.drawTeamGraphs(listEl, fields);
+        },
+
+        /**
+         * Returns a list with team concerns and low confidence score.
+         *
+         * @param {Element} listEl The list to check
+         * @param {number} teamConfidence The team's confidence
+         * @returns {Array} Text list with team concerns
+         */
+        checkConcerns(listEl, teamConfidence) {
+            let concernList = [];
+            let concernCards = $(listEl).find("div.list-card-details:has(span.card-label):contains('concern')");
+            concernCards.css("background-color", "rgba(255,128,96,0.4)");
+
+            /*
+             * Get cards with label 'concern'
+             */
+            let cardTitles = concernCards.find("span.list-card-title");
+            cardTitles.each(function () {
+                let text = $(this)
+                    .clone() //clone the element
+                    .children() //select all the children
+                    .remove() //remove all the children
+                    .end() //again go back to selected element
+                    .text();
+                // violationsEl.append(`${text}<br/>`);
+                concernList.push(text);
+            });
+
+            /*
+             * Get team confidence
+             */
+            if (minConfidence !== undefined && teamConfidence !== undefined && teamConfidence < minConfidence + 1) {
+                concernList.push(`Low confidence score (${teamConfidence.toFixed(1)})`);
+            }
+
+            return concernList;
         },
 
         /**
@@ -753,7 +746,7 @@ const tsqd = (function (factory) {
          * @param {String} name Name of lists to get fields for
          * @param {Array} filter Optional filter with lists to exclude, e.g. `['*','Constraints']`
          * @returns {Object} An associative array as described above
-         * @see getCardFields 
+         * @see getCardFields
          */
         getFields(name, filter) {
             let jLists = tdom.getLists(name, filter);
@@ -769,7 +762,7 @@ const tsqd = (function (factory) {
         },
 
         /**
-         * 
+         *
          */
         getCardFields(cardEl, fields = []) {
             if (!cardEl) {
@@ -850,7 +843,7 @@ const tsqd = (function (factory) {
         },
 
         /**
-         * 
+         *
          */
         generateRoleDistribution(jLists, showCountAsLabel = true, layout) {
             let badges = tdom.countListLabels(jLists, ["*", "concern"]);
@@ -896,7 +889,7 @@ const tsqd = (function (factory) {
         },
 
         /**
-         * 
+         *
          */
         generateFieldGraphData(name, field, layout = config.graphLayout) {
             let data = []; // Chart data
@@ -947,9 +940,10 @@ const tsqd = (function (factory) {
                 let lblCol = labelColors[labels[i]];
                 graphData.push({
                     label: labels[i],
-                    fill: false,
+                    fill: true,
                     data: labelData,
-                    backgroundColor: `rgba(${lblCol.substring(4, lblCol.length - 1)},0.25)`,
+                    // backgroundColor: `rgba(${lblCol.substring(4, lblCol.length - 1)},0.25)`,
+                    backgroundColor: lblCol,
                     pointBackgroundColor: lblCol,
                     borderColor: lblCol,
                 });
@@ -982,6 +976,11 @@ const tsqd = (function (factory) {
                     animation: {
                         duration: 0,
                     },
+                    elements: {
+                        point: {
+                            radius: 0,
+                        },
+                    },
                 },
                 layout: lineLayout,
             };
@@ -1003,8 +1002,6 @@ const tsqd = (function (factory) {
          * @param {Object} chartInfo Information about the graph to draw
          */
         drawGraph(jArea, chartInfo) {
-
-            // TODO Add labels to the donut chart
 
             if (!jArea) {
                 throw new TypeError("Parameter [jArea] not defined");
