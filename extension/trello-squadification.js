@@ -292,7 +292,6 @@ const tsqd = (function (factory) {
             return listObserver;
         },
 
-        // <span class='header-btn-text'>Stats</span>
         /**
          * Adds header icons to the board.
          *  - **Fields** to toggle field visibility on and off
